@@ -565,10 +565,21 @@ function updateEvolution() {
   const prev = trackingData[trackingData.length - 2];
 
   fields.forEach(f => {
-    const delta = (last[f.key] || 0) - (prev[f.key] || 0);
+    const prevVal = prev[f.key] || 0;
+    const lastVal = last[f.key] || 0;
+    const delta = lastVal - prevVal;
     const el = document.getElementById(f.id);
     const sign = delta > 0 ? '+' : '';
-    el.textContent = `${sign}${delta.toFixed(2)}€`;
+
+    let pctStr;
+    if (prevVal === 0) {
+      pctStr = delta === 0 ? '0%' : '—';
+    } else {
+      const pct = (delta / prevVal) * 100;
+      pctStr = `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+    }
+
+    el.textContent = `${sign}${delta.toFixed(2)}€ (${pctStr})`;
     el.closest('.solde-card').style.backgroundColor = delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : '#fbbf24';
   });
 }
