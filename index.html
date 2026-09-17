@@ -567,7 +567,12 @@ function getComparisonColor(actual, expected) {
 function updateEvolution() {
   const cardIds = ['evol_po', 'evol_vwrl', 'evol_vusa', 'evol_dispo', 'evol_etf', 'evol_total'];
 
-  if (trackingData.length < 2) {
+  // Agréger par jour (dernière saisie du jour) au cas où plusieurs saisies existent pour la même date
+  const lastByDate = {};
+  trackingData.forEach(t => { lastByDate[t.date] = t; });
+  const days = Object.keys(lastByDate).sort();
+
+  if (days.length < 2) {
     cardIds.forEach(id => {
       const el = document.getElementById(id);
       el.textContent = '—';
@@ -576,8 +581,8 @@ function updateEvolution() {
     return;
   }
 
-  const last = trackingData[trackingData.length - 1];
-  const prev = trackingData[trackingData.length - 2];
+  const last = lastByDate[days[days.length - 1]];
+  const prev = lastByDate[days[days.length - 2]];
 
   // evol_etf et evol_total sont calculés (pas saisis directement) à partir des mêmes champs bruts
   const values = {
