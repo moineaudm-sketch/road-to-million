@@ -720,9 +720,14 @@ function updateAllocationChart() {
   const vwrlVal = applyAppreciation(last.vwrl_base, VWRL_ANNUAL_RATE, daysSinceEntry);
   const vusaVal = applyAppreciation(last.vusa_base, VUSA_ANNUAL_RATE, daysSinceEntry);
 
+  // PO scindé entre le capital initial (300€) et sa croissance, deux nuances de bleu
+  const poInitial = Math.min(300, last.po || 0);
+  const poGrowth = Math.max((last.po || 0) - 300, 0);
+
   // VWRL et VUSA partagent la même teinte (vert), à deux nuances différentes
   const allCategories = [
-    { label: 'PO', value: last.po || 0, color: '#2a78d6' },
+    { label: 'PO initial', value: poInitial, color: '#1e5ba8' },
+    { label: 'PO (croissance)', value: poGrowth, color: '#6fa8e0' },
     { label: 'Dispo', value: last.dispo || 0, color: '#8b5cf6' },
     { label: 'VWRL (dont intérêts)', value: vwrlVal, color: '#1baf7a' },
     { label: 'VUSA (dont intérêts)', value: vusaVal, color: '#7ee0bb' }
