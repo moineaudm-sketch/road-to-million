@@ -77,12 +77,42 @@
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
     <h2 style="margin-top: 0;">Évolution (2 dernières saisies)</h2>
     <div class="soldes-grid">
-      <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">PO</div><div class="solde-value" id="evol_po">—</div></div>
-      <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">VWRL</div><div class="solde-value" id="evol_vwrl">—</div></div>
-      <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">VUSA</div><div class="solde-value" id="evol_vusa">—</div></div>
-      <div class="solde-card" style="border-left-color: #8b5cf6;"><div class="solde-label">Dispo</div><div class="solde-value" id="evol_dispo">—</div></div>
-      <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Solde ETF</div><div class="solde-value" id="evol_etf">—</div></div>
-      <div class="solde-card" style="border-left-color: #000; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">PO + ETF</div><div class="solde-value" id="evol_total">—</div></div>
+      <div class="solde-card" style="border-left-color: #2a78d6;">
+        <div class="solde-label">PO</div>
+        <div class="solde-value" id="evol_po">—</div>
+        <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem;">🟢 Meilleure : <span id="evol_po_best">—</span></div>
+        <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_po_worst">—</span></div>
+      </div>
+      <div class="solde-card" style="border-left-color: #1baf7a;">
+        <div class="solde-label">VWRL</div>
+        <div class="solde-value" id="evol_vwrl">—</div>
+        <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem;">🟢 Meilleure : <span id="evol_vwrl_best">—</span></div>
+        <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_vwrl_worst">—</span></div>
+      </div>
+      <div class="solde-card" style="border-left-color: #eb6834;">
+        <div class="solde-label">VUSA</div>
+        <div class="solde-value" id="evol_vusa">—</div>
+        <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem;">🟢 Meilleure : <span id="evol_vusa_best">—</span></div>
+        <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_vusa_worst">—</span></div>
+      </div>
+      <div class="solde-card" style="border-left-color: #8b5cf6;">
+        <div class="solde-label">Dispo</div>
+        <div class="solde-value" id="evol_dispo">—</div>
+        <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem;">🟢 Meilleure : <span id="evol_dispo_best">—</span></div>
+        <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_dispo_worst">—</span></div>
+      </div>
+      <div class="solde-card" style="border-left-color: #e34948;">
+        <div class="solde-label">Solde ETF</div>
+        <div class="solde-value" id="evol_etf">—</div>
+        <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem;">🟢 Meilleure : <span id="evol_etf_best">—</span></div>
+        <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_etf_worst">—</span></div>
+      </div>
+      <div class="solde-card" style="border-left-color: #000; font-weight: 600;">
+        <div class="solde-label" style="font-weight: 600;">PO + ETF</div>
+        <div class="solde-value" id="evol_total">—</div>
+        <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem; font-weight: 400;">🟢 Meilleure : <span id="evol_total_best">—</span></div>
+        <div style="font-size: 10px; color: #b91c1c; font-weight: 400;">🔴 Pire : <span id="evol_total_worst">—</span></div>
+      </div>
     </div>
   </div>
 
@@ -565,7 +595,26 @@ function getComparisonColor(actual, expected) {
 }
 
 function updateEvolution() {
-  const cardIds = ['evol_po', 'evol_vwrl', 'evol_vusa', 'evol_dispo', 'evol_etf', 'evol_total'];
+  // evol_etf et evol_total sont calculés (pas saisis directement) à partir des mêmes champs bruts
+  const fieldGetters = {
+    evol_po: t => t.po || 0,
+    evol_vwrl: t => t.vwrl_base || 0,
+    evol_vusa: t => t.vusa_base || 0,
+    evol_dispo: t => t.dispo || 0,
+    evol_etf: t => (t.vwrl_base || 0) + (t.vusa_base || 0),
+    evol_total: t => (t.po || 0) + (t.vwrl_base || 0) + (t.vusa_base || 0)
+  };
+  const cardIds = Object.keys(fieldGetters);
+
+  const resetCards = () => {
+    cardIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = '—';
+      el.closest('.solde-card').style.backgroundColor = '';
+      document.getElementById(`${id}_best`).textContent = '—';
+      document.getElementById(`${id}_worst`).textContent = '—';
+    });
+  };
 
   // Agréger par jour (dernière saisie du jour) au cas où plusieurs saisies existent pour la même date
   const lastByDate = {};
@@ -573,30 +622,17 @@ function updateEvolution() {
   const days = Object.keys(lastByDate).sort();
 
   if (days.length < 2) {
-    cardIds.forEach(id => {
-      const el = document.getElementById(id);
-      el.textContent = '—';
-      el.closest('.solde-card').style.backgroundColor = '';
-    });
+    resetCards();
     return;
   }
 
   const last = lastByDate[days[days.length - 1]];
   const prev = lastByDate[days[days.length - 2]];
 
-  // evol_etf et evol_total sont calculés (pas saisis directement) à partir des mêmes champs bruts
-  const values = {
-    evol_po: { last: last.po || 0, prev: prev.po || 0 },
-    evol_vwrl: { last: last.vwrl_base || 0, prev: prev.vwrl_base || 0 },
-    evol_vusa: { last: last.vusa_base || 0, prev: prev.vusa_base || 0 },
-    evol_dispo: { last: last.dispo || 0, prev: prev.dispo || 0 },
-    evol_etf: { last: (last.vwrl_base || 0) + (last.vusa_base || 0), prev: (prev.vwrl_base || 0) + (prev.vusa_base || 0) },
-    evol_total: { last: (last.po || 0) + (last.vwrl_base || 0) + (last.vusa_base || 0), prev: (prev.po || 0) + (prev.vwrl_base || 0) + (prev.vusa_base || 0) }
-  };
-
-  Object.entries(values).forEach(([id, v]) => {
-    const prevVal = v.prev;
-    const lastVal = v.last;
+  cardIds.forEach(id => {
+    const getter = fieldGetters[id];
+    const prevVal = getter(prev);
+    const lastVal = getter(last);
     const delta = lastVal - prevVal;
     const el = document.getElementById(id);
     const sign = delta > 0 ? '+' : '';
@@ -611,6 +647,18 @@ function updateEvolution() {
 
     el.textContent = `${sign}${delta.toFixed(2)}€ (${pctStr})`;
     el.closest('.solde-card').style.backgroundColor = delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : '#fbbf24';
+
+    // Meilleure / pire journée (variation jour à jour) sur tout l'historique
+    let best = null;
+    let worst = null;
+    for (let i = 1; i < days.length; i++) {
+      const d = getter(lastByDate[days[i]]) - getter(lastByDate[days[i - 1]]);
+      if (best === null || d > best.delta) best = { date: days[i], delta: d };
+      if (worst === null || d < worst.delta) worst = { date: days[i], delta: d };
+    }
+    const fmt = (v) => `${v.date} (${v.delta > 0 ? '+' : ''}${v.delta.toFixed(2)}€)`;
+    document.getElementById(`${id}_best`).textContent = best ? fmt(best) : '—';
+    document.getElementById(`${id}_worst`).textContent = worst ? fmt(worst) : '—';
   });
 }
 
