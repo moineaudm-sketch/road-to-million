@@ -118,6 +118,8 @@
       <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">VWRL</div><div class="solde-value" id="evol_vwrl">—</div></div>
       <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">VUSA</div><div class="solde-value" id="evol_vusa">—</div></div>
       <div class="solde-card" style="border-left-color: #8b5cf6;"><div class="solde-label">Dispo</div><div class="solde-value" id="evol_dispo">—</div></div>
+      <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Solde ETF</div><div class="solde-value" id="evol_etf">—</div></div>
+      <div class="solde-card" style="border-left-color: #000; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">PO + ETF</div><div class="solde-value" id="evol_total">—</div></div>
     </div>
   </div>
 
@@ -545,16 +547,11 @@ function getComparisonColor(actual, expected) {
 }
 
 function updateEvolution() {
-  const fields = [
-    { key: 'po', id: 'evol_po' },
-    { key: 'vwrl_base', id: 'evol_vwrl' },
-    { key: 'vusa_base', id: 'evol_vusa' },
-    { key: 'dispo', id: 'evol_dispo' }
-  ];
+  const cardIds = ['evol_po', 'evol_vwrl', 'evol_vusa', 'evol_dispo', 'evol_etf', 'evol_total'];
 
   if (trackingData.length < 2) {
-    fields.forEach(f => {
-      const el = document.getElementById(f.id);
+    cardIds.forEach(id => {
+      const el = document.getElementById(id);
       el.textContent = '—';
       el.closest('.solde-card').style.backgroundColor = '';
     });
@@ -564,11 +561,21 @@ function updateEvolution() {
   const last = trackingData[trackingData.length - 1];
   const prev = trackingData[trackingData.length - 2];
 
-  fields.forEach(f => {
-    const prevVal = prev[f.key] || 0;
-    const lastVal = last[f.key] || 0;
+  // evol_etf et evol_total sont calculés (pas saisis directement) à partir des mêmes champs bruts
+  const values = {
+    evol_po: { last: last.po || 0, prev: prev.po || 0 },
+    evol_vwrl: { last: last.vwrl_base || 0, prev: prev.vwrl_base || 0 },
+    evol_vusa: { last: last.vusa_base || 0, prev: prev.vusa_base || 0 },
+    evol_dispo: { last: last.dispo || 0, prev: prev.dispo || 0 },
+    evol_etf: { last: (last.vwrl_base || 0) + (last.vusa_base || 0), prev: (prev.vwrl_base || 0) + (prev.vusa_base || 0) },
+    evol_total: { last: (last.po || 0) + (last.vwrl_base || 0) + (last.vusa_base || 0), prev: (prev.po || 0) + (prev.vwrl_base || 0) + (prev.vusa_base || 0) }
+  };
+
+  Object.entries(values).forEach(([id, v]) => {
+    const prevVal = v.prev;
+    const lastVal = v.last;
     const delta = lastVal - prevVal;
-    const el = document.getElementById(f.id);
+    const el = document.getElementById(id);
     const sign = delta > 0 ? '+' : '';
 
     let pctStr;
