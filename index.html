@@ -1224,6 +1224,29 @@ function getTierDisplayRange(projection, tierNum, weeksDuration = 2) {
   };
 }
 
+// Trait vertical pointillé au survol, repérant le jour survolé sur tout le graphe
+Chart.register({
+  id: 'hoverVerticalLine',
+  afterDraw: (chart) => {
+    const active = chart.tooltip && chart.tooltip._active;
+    if (active && active.length) {
+      const ctx = chart.ctx;
+      const x = active[0].element.x;
+      const topY = chart.scales.y.top;
+      const bottomY = chart.scales.y.bottom;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x, bottomY);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = '#999';
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+});
+
 function createChartConfig(labels, datasets, maxY = 2000) {
   return {
     type: 'line',
@@ -1231,11 +1254,20 @@ function createChartConfig(labels, datasets, maxY = 2000) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
           display: true,
           position: 'top',
           labels: { font: { size: 10 }, padding: 8, usePointStyle: true }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          filter: (item) => item.dataset.label !== 'Zone min-max',
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y === null ? '—' : '€' + ctx.parsed.y.toFixed(2)}`
+          }
         }
       },
       scales: {
