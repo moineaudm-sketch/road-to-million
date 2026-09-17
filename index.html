@@ -157,6 +157,15 @@
         <div style="font-weight: 600; font-size: 16px; color: #0284c7;" id="robot_remaining">—</div>
       </div>
     </div>
+    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #bae6fd;">
+      <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 13px;">ETA Atteinte</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.75rem; font-size: 12px;">
+        <div>Pess: <span id="robot_eta_pess" style="font-weight: 600;">—</span></div>
+        <div>Moyen: <span id="robot_eta_mean" style="font-weight: 600;">—</span></div>
+        <div>Opt: <span id="robot_eta_opt" style="font-weight: 600;">—</span></div>
+        <div>Réel: <span id="robot_eta_real" style="font-weight: 600;">—</span></div>
+      </div>
+    </div>
   </div>
 
   <div style="background: #dbeafe; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
@@ -177,6 +186,15 @@
     </div>
     <div style="width: 100%; height: 6px; background: #bfdbfe; border-radius: 3px; margin-top: 1rem; overflow: hidden;">
       <div id="copy_bar" style="height: 100%; width: 0%; background: #0284c7; transition: width 0.3s;"></div>
+    </div>
+    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #bfdbfe;">
+      <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 13px;">ETA Atteinte</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.75rem; font-size: 12px;">
+        <div>Pess: <span id="copy_eta_pess" style="font-weight: 600;">—</span></div>
+        <div>Moyen: <span id="copy_eta_mean" style="font-weight: 600;">—</span></div>
+        <div>Opt: <span id="copy_eta_opt" style="font-weight: 600;">—</span></div>
+        <div>Réel: <span id="copy_eta_real" style="font-weight: 600;">—</span></div>
+      </div>
     </div>
   </div>
 
@@ -901,6 +919,47 @@ function updateETA() {
 
   document.getElementById('indep_4000_pct').textContent = `${indep4000Pct.toFixed(1)}%`;
   document.getElementById('indep_4000_bar').style.width = `${indep4000Pct}%`;
+
+  const findPoETADate = (projection, target) => {
+    if (!projection) return '—';
+    for (let i = 0; i < projection.length; i++) {
+      if (projection[i].po >= target) {
+        const projDate = new Date(START_DATE);
+        let tradingDaysCount = 0;
+        while (tradingDaysCount < i) {
+          const dayOfWeek = projDate.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) tradingDaysCount++;
+          projDate.setDate(projDate.getDate() + 1);
+        }
+        return projDate.toISOString().split('T')[0];
+      }
+    }
+    return '—';
+  };
+
+  // ETA Robot Trading (PO atteint 1000€)
+  const robotTarget = 1000;
+  document.getElementById('robot_eta_pess').textContent = findPoETADate(projPess, robotTarget);
+  document.getElementById('robot_eta_mean').textContent = findPoETADate(projMean, robotTarget);
+  document.getElementById('robot_eta_opt').textContent = findPoETADate(projOpt, robotTarget);
+  document.getElementById('robot_eta_real').textContent = findPoETADate(projReal, robotTarget);
+
+  // ETA Escalade Copie (prochain palier de +150€)
+  const copyEtaIds = ['copy_eta_pess', 'copy_eta_mean', 'copy_eta_opt', 'copy_eta_real'];
+  if (trackingData.length > 0) {
+    const lastPo = trackingData[trackingData.length - 1].po;
+    const poBase = 300;
+    const poGrowth = Math.max(lastPo - poBase, 0);
+    const copieSteps = Math.floor(poGrowth / 150);
+    const nextCopieTarget = poBase + ((copieSteps + 1) * 150);
+
+    document.getElementById('copy_eta_pess').textContent = findPoETADate(projPess, nextCopieTarget);
+    document.getElementById('copy_eta_mean').textContent = findPoETADate(projMean, nextCopieTarget);
+    document.getElementById('copy_eta_opt').textContent = findPoETADate(projOpt, nextCopieTarget);
+    document.getElementById('copy_eta_real').textContent = findPoETADate(projReal, nextCopieTarget);
+  } else {
+    copyEtaIds.forEach(id => { document.getElementById(id).textContent = '—'; });
+  }
 }
 
 function updateNextTier() {
