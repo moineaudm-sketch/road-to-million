@@ -748,6 +748,10 @@ function updateAllocationChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      // Le graphe est recréé à chaque rafraîchissement des données ; son animation d'entrée entrait
+      // en conflit avec l'animation du tooltip si on survolait juste après (tooltip figé transparent
+      // au premier survol). Désactivée : ce n'est qu'un petit graphe de répartition, pas critique.
+      animation: false,
       plugins: {
         legend: {
           position: 'bottom',
