@@ -622,7 +622,7 @@ function updateSoldes() {
   const portfolioTotal = last.po + etfTotal;
 
   // Calculer valeurs du scénario pessimiste pour aujourd'hui
-  const projPess = generateProjection(2000, 0.006, 0.05, 0.07);
+  const projPess = generateProjection(2000, 0.008, 0.05, 0.07);
   const today = new Date().toISOString().split('T')[0];
   const pessToday = projPess.find(d => d.date === today) || projPess[projPess.length - 1];
 
@@ -819,7 +819,7 @@ function generateRealProjection() {
 
 function updateETA() {
   const daysOfTrading = 2000;
-  const projPess = generateProjection(daysOfTrading, 0.006, 0.05, 0.07);
+  const projPess = generateProjection(daysOfTrading, 0.008, 0.05, 0.07);
   const projMean = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
   const projOpt = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
   const projReal = generateRealProjection();
@@ -961,7 +961,7 @@ function updateNextTier() {
 
   // Calculer ETAs pour atteindre le prochain palier
   const daysOfTrading = 2000;
-  const projPess = generateProjection(daysOfTrading, 0.006, 0.05, 0.07);
+  const projPess = generateProjection(daysOfTrading, 0.008, 0.05, 0.07);
   const projMean = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
   const projOpt = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
   const projReal = generateRealProjection();
@@ -1082,7 +1082,7 @@ function createChartConfig(labels, datasets, maxY = 2000) {
 
 function updateAllCharts() {
   const daysOfTrading = 2000;
-  const projPessRaw = generateProjection(daysOfTrading, 0.006, 0.05, 0.07);
+  const projPessRaw = generateProjection(daysOfTrading, 0.008, 0.05, 0.07);
   const projMeanRaw = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
   const projOptRaw = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
 
@@ -1139,7 +1139,7 @@ function updateAllCharts() {
 
   // Graphe PO
   const datasetsPO = [
-    { label: 'Pessimiste (0.6%/j)', data: projPessSlice.map(d => d.po), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Pessimiste (0.8%/j)', data: projPessSlice.map(d => d.po), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'Zone min-max', data: projPessSlice.map(d => d.po), borderColor: 'transparent', backgroundColor: 'rgba(26, 175, 122, 0.15)', fill: '+2', tension: 0.1, pointRadius: 0, borderWidth: 0 },
     { label: 'Moyen (1.0%/j)', data: projMeanSlice.map(d => d.po), borderColor: '#2a78d6', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'Optimiste (1.2%/j)', data: projOptSlice.map(d => d.po), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
@@ -1168,7 +1168,7 @@ function updateAllCharts() {
 
   // Graphe Total (PO + ETF)
   const datasetsTotal = [
-    { label: 'Pessimiste (0.6%/j)', data: projPessSlice.map(d => d.total), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Pessimiste (0.8%/j)', data: projPessSlice.map(d => d.total), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'Zone min-max', data: projPessSlice.map(d => d.total), borderColor: 'transparent', backgroundColor: 'rgba(26, 175, 122, 0.15)', fill: '+2', tension: 0.1, pointRadius: 0, borderWidth: 0 },
     { label: 'Moyen (1.0%/j)', data: projMeanSlice.map(d => d.total), borderColor: '#2a78d6', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'Optimiste (1.2%/j)', data: projOptSlice.map(d => d.total), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
