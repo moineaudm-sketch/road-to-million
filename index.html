@@ -84,7 +84,7 @@
     <div class="form-row"><label style="min-width: 80px;">PO Balance :</label><input type="number" id="poInput" placeholder="€" step="0.01"></div>
     <div class="form-row"><label style="min-width: 80px;">VWRL :</label><input type="number" id="vwrlInput" placeholder="€ ou unités" step="0.01"><select id="vwrlType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
     <div class="form-row"><label style="min-width: 80px;">VUSA :</label><input type="number" id="vusaInput" placeholder="€ ou unités" step="0.01"><select id="vusaType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
-    <div class="form-row"><label style="min-width: 80px;">Livret A :</label><input type="number" id="dispoInput" placeholder="€" step="0.01"></div>
+    <div class="form-row"><label style="min-width: 80px;">Dispo :</label><input type="number" id="dispoInput" placeholder="€" step="0.01"></div>
     <div class="controls">
       <button onclick="addTracking()">Ajouter</button>
       <button class="secondary" onclick="deleteLastEntry()">Annuler dernière</button>
@@ -105,7 +105,7 @@
       <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">VWRL</div><div class="solde-value" id="solde_vwrl">—</div></div>
       <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">VUSA</div><div class="solde-value" id="solde_vusa">—</div></div>
       <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Solde ETF</div><div class="solde-value" id="solde_etf">—</div></div>
-      <div class="solde-card" style="border-left-color: #8b5cf6;"><div class="solde-label">Livret A</div><div class="solde-value" id="solde_dispo">—</div></div>
+      <div class="solde-card" style="border-left-color: #8b5cf6;"><div class="solde-label">Dispo</div><div class="solde-value" id="solde_dispo">—</div></div>
       <div class="solde-card" style="border-left-color: #000; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">PO + ETF</div><div class="solde-value" id="solde_total">—</div></div>
       <div class="solde-card" style="border-left-color: #f59e0b; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">vs 300€ %</div><div class="solde-value" id="solde_total_pct">—</div></div>
     </div>
@@ -232,7 +232,7 @@
   </div>
 
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
-    <h2 style="margin-top: 0;">ETA Indépendance Financière (Livret A)</h2>
+    <h2 style="margin-top: 0;">ETA Indépendance Financière (Dispo)</h2>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -895,7 +895,7 @@ function updateNextTier() {
   document.getElementById('nextTier_bar').style.width = `${tierPct}%`;
   document.getElementById('nextTierSplit').innerHTML = `
     <div>Retrait (50% du gain): €${retrait.toFixed(0)}</div>
-    <div>├ Livret A: €${toLivretA.toFixed(0)}</div>
+    <div>├ Dispo: €${toLivretA.toFixed(0)}</div>
     <div>└ ETF: €${toETF.toFixed(0)}</div>
     <div style="margin-left: 1.2em;">├ VWRL (60%): €${toVWRL.toFixed(0)}</div>
     <div style="margin-left: 1.2em;">└ VUSA (40%): €${toVUSA.toFixed(0)}</div>
