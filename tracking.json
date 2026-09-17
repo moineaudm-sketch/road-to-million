@@ -1,29 +1,6 @@
 [
-  {
-    "date": "2026-09-14",
-    "time": "00:00",
-    "po": 300,
-    "vwrl_base": 0,
-    "vusa_base": 0,
-    "dispo": 0,
-    "entry_timestamp": 1789336800000
-  },
-  {
-    "date": "2026-09-15",
-    "time": "00:00",
-    "po": 314.68,
-    "vwrl_base": 0,
-    "vusa_base": 0,
-    "dispo": 0,
-    "entry_timestamp": 1789423200000
-  },
-  {
-    "date": "2026-09-17",
-    "time": "08:34",
-    "po": 364.99,
-    "vwrl_base": 0,
-    "vusa_base": 0,
-    "dispo": 0,
-    "entry_timestamp": 1789626878106
-  }
+  { "date": "2026-09-11", "time": "21:00", "po": 307.67, "vwrl_base": 0, "vusa_base": 0, "dispo": 0, "entry_timestamp": 1789153200000 },
+  { "date": "2026-09-14", "time": "21:00", "po": 303.91, "vwrl_base": 0, "vusa_base": 0, "dispo": 0, "entry_timestamp": 1789412400000 },
+  { "date": "2026-09-15", "time": "21:00", "po": 291.12, "vwrl_base": 0, "vusa_base": 0, "dispo": 0, "entry_timestamp": 1789498800000 },
+  { "date": "2026-09-16", "time": "21:00", "po": 364.99, "vwrl_base": 0, "vusa_base": 0, "dispo": 0, "entry_timestamp": 1789585200000 }
 ]

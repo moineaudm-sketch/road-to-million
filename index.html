@@ -287,12 +287,14 @@ const GITHUB_REPO = 'road-to-million';
 const GITHUB_BRANCH = 'main';
 const TRACKING_JSON_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/tracking.json`;
 
-const VWRL_ANNUAL_RATE = 0.075; const VUSA_ANNUAL_RATE = 0.095; const VWRL_PRICE = 85.50; const VUSA_PRICE = 107.20; const START_DATE = new Date(2026, 8, 14); const TARGET = 1000000;
+const VWRL_ANNUAL_RATE = 0.075; const VUSA_ANNUAL_RATE = 0.095; const VWRL_PRICE = 85.50; const VUSA_PRICE = 107.20; const START_DATE = new Date(2026, 8, 11); const TARGET = 1000000;
 let trackingData = [];
-// Initialiser avec saisies de départ si vide
+// Dernier recours seulement (ni distant ni cache local disponibles) — reflète les vraies premières saisies
 const initialEntries = [
-  { date: '2026-09-14', time: '00:00', po: 300, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 14).getTime() },
-  { date: '2026-09-15', time: '00:00', po: 314.68, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 15).getTime() }
+  { date: '2026-09-11', time: '21:00', po: 307.67, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 11, 21, 0).getTime() },
+  { date: '2026-09-14', time: '21:00', po: 303.91, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 14, 21, 0).getTime() },
+  { date: '2026-09-15', time: '21:00', po: 291.12, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 15, 21, 0).getTime() },
+  { date: '2026-09-16', time: '21:00', po: 364.99, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 16, 21, 0).getTime() }
 ];
 let chartPO = null; let chartETF = null; let chartTotal = null;
 
@@ -428,13 +430,6 @@ async function loadData() {
     trackingData = localData || [...initialEntries];
     setSyncStatus('⚠ Hors ligne — données locales (cache)', 'offline');
   }
-
-  // Ajouter les entrées initiales si manquantes
-  const has300 = trackingData.some(t => t.date === '2026-09-14' && t.po === 300);
-  const has31468 = trackingData.some(t => t.date === '2026-09-15' && t.po === 314.68);
-
-  if (!has300) trackingData.unshift(initialEntries[0]);
-  if (!has31468) trackingData.push(initialEntries[1]);
 
   // Trier par date pour être sûr
   trackingData.sort((a, b) => {
