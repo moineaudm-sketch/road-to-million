@@ -93,6 +93,7 @@
       <button class="secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
       <button class="secondary" onclick="exportTrackingJson()">🔄 Export tracking.json</button>
       <button class="secondary" onclick="loadData()">🔁 Resync GitHub</button>
+      <button class="secondary" onclick="clearLocalCache()">🗑️ Vider cache local</button>
     </div>
   </div>
 
@@ -440,18 +441,22 @@ async function loadData() {
 
   saveData();
   if (recoveredLocalEntries) {
-    if (getGithubToken()) {
-      showToast('⚠ Entrée(s) locale(s) non synchronisées récupérées — nouvelle tentative de push');
-      pushTrackingToGitHub();
-    } else {
-      showToast('⚠ Entrée(s) locale(s) non synchronisées récupérées — configure un token ou utilise Export tracking.json');
-    }
+    // Volontairement PAS de push automatique ici : une entrée locale peut être une vraie saisie
+    // non synchronisée à conserver, ou un cache périmé (ex. après un reset des données) à effacer.
+    // Seul un humain peut trancher — le push auto sur "Ajouter" reste inchangé pour les nouvelles saisies.
+    setSyncStatus('⚠ Entrée(s) locale(s) absentes de GitHub détectées — vérifie le tableau, puis "Vider cache local" si périmées ou "Export tracking.json" si à garder', 'offline');
+    showToast('⚠ Entrée(s) locale(s) absentes de GitHub — vérifie avant de resynchroniser à nouveau');
   }
   updateSoldes();
   updateTrackingTable();
   updateAllCharts();
 }
 function saveData() { localStorage.setItem('po_dashboard_v2', JSON.stringify(trackingData)); }
+function clearLocalCache() {
+  if (!confirm('Effacer le cache local de cet appareil et recharger uniquement depuis GitHub ?\n\nÀ utiliser après un reset des données : toute saisie non encore synchronisée sera perdue.')) return;
+  try { localStorage.removeItem('po_dashboard_v2'); } catch (e) { /* ignore */ }
+  location.reload();
+}
 function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
 function applyAppreciation(value, rate, days) { return value * Math.pow(1 + rate, days / 365); }
 
