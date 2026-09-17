@@ -837,10 +837,12 @@ function computeObservedDailyRate() {
 }
 
 function generateRealProjection() {
-  // Suivi réel (points exacts saisis) puis continuation en projection sur la base moyenne
+  // Suivi réel (points exacts saisis) puis continuation en projection sur le taux réel observé
   if (trackingData.length === 0) return null;
 
   const lastEntry = trackingData[trackingData.length - 1];
+  const observedDailyRate = computeObservedDailyRate();
+  const continuationRate = observedDailyRate !== null ? observedDailyRate : 0.010; // repli sur la moyenne si historique trop court (< 2 jours)
 
   // Créer map de suivi réel
   const trackingByDate = {};
@@ -879,8 +881,8 @@ function generateRealProjection() {
           nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
         }
 
-        // Après dernier suivi : continuer sur la base moyenne (même taux que le scénario "Moyen")
-        po = po * (1 + 0.010);
+        // Après dernier suivi : continuer sur le taux réel observé
+        po = po * (1 + continuationRate);
         vwrl = vwrl * Math.pow(1 + VWRL_ANNUAL_RATE, 1 / 252);
         vusa = vusa * Math.pow(1 + VUSA_ANNUAL_RATE, 1 / 252);
 
@@ -1245,7 +1247,7 @@ function updateAllCharts() {
   const realRateEl = document.getElementById('realRateInfo');
   if (realRateEl) {
     realRateEl.textContent = observedRate !== null
-      ? `${(observedRate * 100).toFixed(2)}%/j sur l'historique — la projection continue à 1.00%/j (moyenne) après la dernière saisie`
+      ? `${(observedRate * 100).toFixed(2)}%/j sur l'historique — la projection continue sur ce même taux après la dernière saisie`
       : '—';
   }
 
