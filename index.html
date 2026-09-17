@@ -540,6 +540,14 @@ function clearLocalCache() {
 }
 function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
 function applyAppreciation(value, rate, days) { return value * Math.pow(1 + rate, days / 365); }
+// toISOString() convertit en UTC : en Europe/Paris (UTC+2 l'été), ça décale toute date locale d'un jour
+// en arrière. toLocalDateStr formate en YYYY-MM-DD sur le fuseau local, sans ce décalage.
+function toLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 function addTracking() {
   const po = document.getElementById('poInput').value.trim();
@@ -569,7 +577,7 @@ function addTracking() {
   const vwrlEur = vwrlType === 'units' && vwrlValue > 0 ? vwrlValue * vwrlPrice : vwrlValue;
   const vusaEur = vusaType === 'units' && vusaValue > 0 ? vusaValue * vusaPrice : vusaValue;
 
-  const now = new Date(); const dateStr = now.toISOString().split('T')[0]; const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+  const now = new Date(); const dateStr = toLocalDateStr(now); const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
   trackingData.push({ date: dateStr, time: timeStr, po: poValue, vwrl_base: vwrlEur, vusa_base: vusaEur, dispo: dispoValue, entry_timestamp: now.getTime() });
 
   saveData();
@@ -585,7 +593,7 @@ function addTracking() {
 }
 
 function deleteLastEntry() { if (trackingData.length > 0) { trackingData.pop(); saveData(); pushTrackingToGitHub(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Entrée supprimée'); } }
-function exportData() { const json = JSON.stringify(trackingData, null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `po-backup-${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); showToast('✓ Backup téléchargé'); }
+function exportData() { const json = JSON.stringify(trackingData, null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `po-backup-${toLocalDateStr(new Date())}.json`; a.click(); URL.revokeObjectURL(url); showToast('✓ Backup téléchargé'); }
 function importData() { const file = document.getElementById('importFile').files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { trackingData = JSON.parse(e.target.result); saveData(); pushTrackingToGitHub(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Importé'); } catch (err) { showToast('❌ Erreur'); } document.getElementById('importFile').value = ''; }; reader.readAsText(file); }
 
 function exportTrackingJson() {
@@ -715,7 +723,7 @@ function updateSoldes() {
 
   // Calculer valeurs du scénario pessimiste pour aujourd'hui
   const projPess = generateProjection(2000, 0.008, 0.025, 0.05);
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateStr(new Date());
   const pessToday = projPess.find(d => d.date === today) || projPess[projPess.length - 1];
 
   // Appliquer couleurs
@@ -805,7 +813,7 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
       }
 
       data.push({
-        date: currentDate.toISOString().split('T')[0],
+        date: toLocalDateStr(currentDate),
         po,
         vwrl,
         vusa,
@@ -857,6 +865,12 @@ function generateRealProjection() {
   let vusa = 0;
   let livretA = 0;
 
+  // Capital net retiré : une resaisie manuelle ne permet pas de distinguer un nouveau dépôt d'une
+  // plus-value déjà là (simple photo de solde) — chaque saisie réelle redéfinit donc le capital de
+  // référence. Seuls les apports identifiables (retraits de palier) et la croissance projetée ensuite
+  // comptent comme gain imposable à 45%.
+  let cumulativeDeposits = 0;
+
   // Politique de retrait aux paliers de doublement (même règle que "Prochain Palier" : base 300€) —
   // initialisée seulement quand la continuation démarre, à partir du solde réel atteint
   const poInitial = 300;
@@ -865,7 +879,7 @@ function generateRealProjection() {
 
   while (data.length < 2000) {
     const dayOfWeek = currentDate.getDay();
-    const dateStr = currentDate.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(currentDate);
 
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       // Utiliser suivi réel si existe
@@ -874,6 +888,7 @@ function generateRealProjection() {
         po = t.po;
         vwrl = t.vwrl_base || 0;
         vusa = t.vusa_base || 0;
+        cumulativeDeposits = vwrl + vusa; // redéfinit le capital de référence à chaque saisie réelle
       } else if (new Date(dateStr) > new Date(lastEntry.date)) {
         if (doubleCount === null) {
           // Déterminer combien de paliers sont déjà dépassés par le solde réel actuel
@@ -901,21 +916,27 @@ function generateRealProjection() {
           vwrl += toVWRL;
           vusa += toVUSA;
           livretA += toLivretA;
+          cumulativeDeposits += toVWRL + toVUSA; // nouvel apport en capital vers l'ETF (pas un gain de marché)
           doubleCount += 1;
           nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
         }
       }
       // Avant premier suivi : garder 300€
 
+      const etfTotal = vwrl + vusa;
+      const gains = Math.max(0, etfTotal - cumulativeDeposits);
+      const taxes = gains * 0.45;
+
       data.push({
         date: dateStr,
         po: po,
         vwrl: vwrl,
         vusa: vusa,
-        etf_total: vwrl + vusa,
+        etf_total: etfTotal,
         total: po + vwrl + vusa,
         livretA: livretA,
-        isActual: !!trackingByDate[dateStr]
+        isActual: !!trackingByDate[dateStr],
+        netWithdrawn: etfTotal - taxes
       });
     }
 
@@ -944,7 +965,7 @@ function updateETA() {
           if (dayOfWeek !== 0 && dayOfWeek !== 6) tradingDaysCount++;
           projDate.setDate(projDate.getDate() + 1);
         }
-        return projDate.toISOString().split('T')[0];
+        return toLocalDateStr(projDate);
       }
     }
     return '—';
@@ -980,7 +1001,7 @@ function updateETA() {
           if (dayOfWeek !== 0 && dayOfWeek !== 6) tradingDaysCount++;
           projDate.setDate(projDate.getDate() + 1);
         }
-        return projDate.toISOString().split('T')[0];
+        return toLocalDateStr(projDate);
       }
     }
     return '—';
@@ -1022,7 +1043,7 @@ function updateETA() {
           if (dayOfWeek !== 0 && dayOfWeek !== 6) tradingDaysCount++;
           projDate.setDate(projDate.getDate() + 1);
         }
-        return projDate.toISOString().split('T')[0];
+        return toLocalDateStr(projDate);
       }
     }
     return '—';
@@ -1296,6 +1317,9 @@ function updateAllCharts() {
   // Point visible uniquement sur les dates réellement saisies ; la portion projetée reste une ligne sans marqueur
   const trackPointRadius = hasRealData ? projRealSlice.map(d => d.isActual ? 3 : 0) : new Array(labelsSlice.length).fill(0);
 
+  // Capital net retiré (scénario Réel) : valeur ETF moins impôts 45% sur les gains réalisés (voir generateRealProjection)
+  const trackDataNetWithdrawn = hasRealData ? projRealSlice.map(d => d.netWithdrawn) : new Array(labelsSlice.length).fill(null);
+
   // Graphe PO
   const datasetsPO = [
     { label: 'Pessimiste (0.8%/j)', data: projPessSlice.map(d => d.po), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
@@ -1320,7 +1344,8 @@ function updateAllCharts() {
     { label: 'ETF Total Opt', data: projOptSlice.map(d => d.etf_total), borderColor: '#666', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
     { label: 'VWRL Réel', data: trackDataVWRL, borderColor: '#1baf7a', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#1baf7a' },
     { label: 'VUSA Réel', data: trackDataVUSA, borderColor: '#eb6834', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#eb6834' },
-    { label: 'ETF Total Réel', data: trackDataETF, borderColor: '#e34948', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#e34948' }
+    { label: 'ETF Total Réel', data: trackDataETF, borderColor: '#e34948', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#e34948' },
+    { label: 'Capital net retiré (après impôts 45%)', data: trackDataNetWithdrawn, borderColor: '#7c3aed', borderWidth: 2, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#7c3aed', borderDash: [3, 3] }
   ];
   if (chartETF) chartETF.destroy();
   chartETF = new Chart(document.getElementById('chartETF').getContext('2d'), createChartConfig(labelsSlice, datasetsETF, maxYETF));
