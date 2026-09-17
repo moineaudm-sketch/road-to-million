@@ -81,9 +81,20 @@
 
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
     <h2 style="margin-top: 0;">Répartition Actuelle</h2>
-    <div style="position: relative; height: 260px; max-width: 360px; margin: 0 auto;"><canvas id="chartAllocation"></canvas></div>
-    <div id="allocationTotal" style="text-align: center; font-size: 15px; font-weight: 600; margin-top: 0.75rem;"></div>
-    <div id="allocationEmpty" class="no-data" style="display: none;">Aucune donnée.</div>
+    <div class="indep-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+      <div>
+        <h3 style="font-size: 12px; font-weight: 600; text-align: center; color: #666; margin-bottom: 0.5rem;">Total (PO + ETF + Dispo)</h3>
+        <div style="position: relative; height: 240px; max-width: 320px; margin: 0 auto;"><canvas id="chartAllocation"></canvas></div>
+        <div id="allocationTotal" style="text-align: center; font-size: 14px; font-weight: 600; margin-top: 0.75rem;"></div>
+        <div id="allocationEmpty" class="no-data" style="display: none;">Aucune donnée.</div>
+      </div>
+      <div>
+        <h3 style="font-size: 12px; font-weight: 600; text-align: center; color: #666; margin-bottom: 0.5rem;">Objectif Million (PO + ETF)</h3>
+        <div style="position: relative; height: 240px; max-width: 320px; margin: 0 auto;"><canvas id="chartAllocationMillion"></canvas></div>
+        <div id="allocationMillionTotal" style="text-align: center; font-size: 14px; font-weight: 600; margin-top: 0.75rem;"></div>
+        <div id="allocationMillionEmpty" class="no-data" style="display: none;">Aucune donnée.</div>
+      </div>
+    </div>
   </div>
 
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
@@ -385,7 +396,7 @@ const initialEntries = [
   { date: '2026-09-15', time: '21:00', po: 291.12, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 15, 21, 0).getTime() },
   { date: '2026-09-16', time: '21:00', po: 364.99, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 16, 21, 0).getTime() }
 ];
-let chartPO = null; let chartETF = null; let chartTotal = null; let chartAllocation = null;
+let chartPO = null; let chartETF = null; let chartTotal = null; let chartAllocation = null; let chartAllocationMillion = null;
 
 function setSyncStatus(msg, cls) {
   const el = document.getElementById('syncStatus');
@@ -698,14 +709,19 @@ function updateEvolution() {
   });
 }
 
-function updateAllocationChart() {
-  const canvas = document.getElementById('chartAllocation');
-  const emptyEl = document.getElementById('allocationEmpty');
-  const totalEl = document.getElementById('allocationTotal');
+function renderAllocationPie(canvasId, totalId, emptyId, getChart, setChart, allCategories) {
+  const canvas = document.getElementById(canvasId);
+  const totalEl = document.getElementById(totalId);
+  const emptyEl = document.getElementById(emptyId);
   if (!canvas) return;
 
-  if (trackingData.length === 0) {
-    if (chartAllocation) { chartAllocation.destroy(); chartAllocation = null; }
+  // Ne garder que les parts non nulles : une part à 0€ ne s'affiche pas et évite l'artefact visuel
+  // de bordure quand une seule part à 100% partage son contour avec des parts vides
+  const categories = allCategories.filter(c => c.value > 0);
+
+  if (categories.length === 0) {
+    const existing = getChart();
+    if (existing) { existing.destroy(); setChart(null); }
     canvas.style.display = 'none';
     if (totalEl) totalEl.textContent = '';
     if (emptyEl) emptyEl.style.display = 'block';
@@ -713,28 +729,6 @@ function updateAllocationChart() {
   }
   canvas.style.display = 'block';
   if (emptyEl) emptyEl.style.display = 'none';
-
-  const last = trackingData[trackingData.length - 1];
-  const entryDate = new Date(last.date);
-  const daysSinceEntry = Math.floor((new Date() - entryDate) / (1000 * 60 * 60 * 24));
-  const vwrlVal = applyAppreciation(last.vwrl_base, VWRL_ANNUAL_RATE, daysSinceEntry);
-  const vusaVal = applyAppreciation(last.vusa_base, VUSA_ANNUAL_RATE, daysSinceEntry);
-
-  // PO scindé entre le capital initial (300€) et sa croissance, deux nuances de bleu
-  const poInitial = Math.min(300, last.po || 0);
-  const poGrowth = Math.max((last.po || 0) - 300, 0);
-
-  // VWRL et VUSA partagent la même teinte (vert), à deux nuances différentes
-  const allCategories = [
-    { label: 'PO initial', value: poInitial, color: '#1e5ba8' },
-    { label: 'PO (croissance)', value: poGrowth, color: '#6fa8e0' },
-    { label: 'Dispo', value: last.dispo || 0, color: '#8b5cf6' },
-    { label: 'VWRL (dont intérêts)', value: vwrlVal, color: '#1baf7a' },
-    { label: 'VUSA (dont intérêts)', value: vusaVal, color: '#7ee0bb' }
-  ];
-  // Ne garder que les parts non nulles : une part à 0€ ne s'affiche pas et évite l'artefact visuel
-  // de bordure quand une seule part à 100% partage son contour avec des parts vides
-  const categories = allCategories.filter(c => c.value > 0);
 
   const labels = categories.map(c => c.label);
   const values = categories.map(c => c.value);
@@ -746,8 +740,10 @@ function updateAllocationChart() {
   // Avec une seule part (100%), la bordure blanche laisse un trait visible au point de jonction : on la retire
   const borderWidth = categories.length > 1 ? 2 : 0;
 
-  if (chartAllocation) chartAllocation.destroy();
-  chartAllocation = new Chart(canvas.getContext('2d'), {
+  const existing = getChart();
+  if (existing) existing.destroy();
+
+  const chart = new Chart(canvas.getContext('2d'), {
     type: 'pie',
     data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#fff', borderWidth }] },
     options: {
@@ -761,10 +757,10 @@ function updateAllocationChart() {
         legend: {
           position: 'bottom',
           labels: {
-            font: { size: 11 }, padding: 10, usePointStyle: true,
-            generateLabels: (chart) => {
-              const ds = chart.data.datasets[0];
-              return chart.data.labels.map((label, i) => ({
+            font: { size: 10 }, padding: 8, usePointStyle: true,
+            generateLabels: (c) => {
+              const ds = c.data.datasets[0];
+              return c.data.labels.map((label, i) => ({
                 text: `${label} : €${ds.data[i].toFixed(2)}`,
                 fillStyle: ds.backgroundColor[i],
                 strokeStyle: ds.backgroundColor[i],
@@ -786,6 +782,42 @@ function updateAllocationChart() {
       }
     }
   });
+
+  setChart(chart);
+}
+
+function updateAllocationChart() {
+  if (trackingData.length === 0) {
+    renderAllocationPie('chartAllocation', 'allocationTotal', 'allocationEmpty', () => chartAllocation, c => { chartAllocation = c; }, []);
+    renderAllocationPie('chartAllocationMillion', 'allocationMillionTotal', 'allocationMillionEmpty', () => chartAllocationMillion, c => { chartAllocationMillion = c; }, []);
+    return;
+  }
+
+  const last = trackingData[trackingData.length - 1];
+  const entryDate = new Date(last.date);
+  const daysSinceEntry = Math.floor((new Date() - entryDate) / (1000 * 60 * 60 * 24));
+  const vwrlVal = applyAppreciation(last.vwrl_base, VWRL_ANNUAL_RATE, daysSinceEntry);
+  const vusaVal = applyAppreciation(last.vusa_base, VUSA_ANNUAL_RATE, daysSinceEntry);
+
+  // PO scindé entre le capital initial (300€) et sa croissance, deux nuances de bleu
+  const poInitial = Math.min(300, last.po || 0);
+  const poGrowth = Math.max((last.po || 0) - 300, 0);
+
+  const poCategories = [
+    { label: 'PO initial', value: poInitial, color: '#1e5ba8' },
+    { label: 'PO (croissance)', value: poGrowth, color: '#6fa8e0' }
+  ];
+  // VWRL et VUSA partagent la même teinte (vert), à deux nuances différentes
+  const etfCategories = [
+    { label: 'VWRL (dont intérêts)', value: vwrlVal, color: '#1baf7a' },
+    { label: 'VUSA (dont intérêts)', value: vusaVal, color: '#7ee0bb' }
+  ];
+  const dispoCategory = { label: 'Dispo', value: last.dispo || 0, color: '#8b5cf6' };
+
+  // Total (avec Dispo) : la vue complète du patrimoine
+  renderAllocationPie('chartAllocation', 'allocationTotal', 'allocationEmpty', () => chartAllocation, c => { chartAllocation = c; }, [...poCategories, dispoCategory, ...etfCategories]);
+  // Objectif Million (sans Dispo) : même base que le calcul de l'ETA €1,000,000 (PO + ETF uniquement)
+  renderAllocationPie('chartAllocationMillion', 'allocationMillionTotal', 'allocationMillionEmpty', () => chartAllocationMillion, c => { chartAllocationMillion = c; }, [...poCategories, ...etfCategories]);
 }
 
 function updateSoldes() {
