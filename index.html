@@ -375,6 +375,7 @@ async function pushTrackingToGitHub() {
     showToast('✓ tracking.json mis à jour sur GitHub');
   } catch (e) {
     console.error('Push GitHub échoué:', e);
+    setSyncStatus('⚠ Push GitHub échoué — entrée gardée en local, ne pas resynchroniser avant nouvelle tentative', 'offline');
     showToast(`❌ Push GitHub échoué — utilise "Export tracking.json" en secours`);
   }
 }
@@ -387,8 +388,24 @@ async function fetchRemoteTracking() {
   return json;
 }
 
+function mergeTrackingData(remote, local) {
+  // Union remote + local, dédupliquée par entry_timestamp : ne perd jamais une entrée
+  // saisie localement qui n'a pas encore été poussée sur GitHub (token absent, push raté, etc.)
+  const merged = [...remote];
+  const remoteKeys = new Set(remote.map(t => t.entry_timestamp));
+  local.forEach(t => { if (!remoteKeys.has(t.entry_timestamp)) merged.push(t); });
+  return merged;
+}
+
 async function loadData() {
   updateGithubTokenStatus();
+
+  const saved = localStorage.getItem('po_dashboard_v2');
+  let localData = null;
+  if (saved) {
+    try { localData = JSON.parse(saved); } catch (e) { console.error('Erreur:', e); localData = null; }
+  }
+
   let remoteData = null;
   try {
     remoteData = await fetchRemoteTracking();
@@ -396,21 +413,19 @@ async function loadData() {
     console.warn('tracking.json distant inaccessible, fallback localStorage:', e);
   }
 
+  let recoveredLocalEntries = false;
+
   if (remoteData) {
-    trackingData = remoteData;
+    if (localData && localData.length > 0) {
+      const merged = mergeTrackingData(remoteData, localData);
+      recoveredLocalEntries = merged.length !== remoteData.length;
+      trackingData = merged;
+    } else {
+      trackingData = remoteData;
+    }
     setSyncStatus(`✓ Synchronisé depuis GitHub (${new Date().toLocaleTimeString('fr-FR')})`, 'ok');
   } else {
-    const saved = localStorage.getItem('po_dashboard_v2');
-    if (saved) {
-      try {
-        trackingData = JSON.parse(saved);
-      } catch (e) {
-        console.error('Erreur:', e);
-        trackingData = [...initialEntries];
-      }
-    } else {
-      trackingData = [...initialEntries];
-    }
+    trackingData = localData || [...initialEntries];
     setSyncStatus('⚠ Hors ligne — données locales (cache)', 'offline');
   }
 
@@ -429,6 +444,14 @@ async function loadData() {
   });
 
   saveData();
+  if (recoveredLocalEntries) {
+    if (getGithubToken()) {
+      showToast('⚠ Entrée(s) locale(s) non synchronisées récupérées — nouvelle tentative de push');
+      pushTrackingToGitHub();
+    } else {
+      showToast('⚠ Entrée(s) locale(s) non synchronisées récupérées — configure un token ou utilise Export tracking.json');
+    }
+  }
   updateSoldes();
   updateTrackingTable();
   updateAllCharts();
