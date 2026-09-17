@@ -136,6 +136,11 @@
         <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem; font-weight: 400;">🟢 Meilleure : <span id="evol_total_best">—</span></div>
         <div style="font-size: 10px; color: #b91c1c; font-weight: 400;">🔴 Pire : <span id="evol_total_worst">—</span></div>
       </div>
+      <div class="solde-card" style="border-left-color: #f59e0b; font-weight: 600;">
+        <div class="solde-label" style="font-weight: 600;">Progression journalière moyenne</div>
+        <div class="solde-value" id="evol_avg_daily" style="font-size: 16px;">—</div>
+        <div style="font-size: 10px; color: #666; margin-top: 0.35rem;">PO + ETF, jours de trading uniquement (hors week-end)</div>
+      </div>
     </div>
   </div>
 
@@ -661,6 +666,7 @@ function updateEvolution() {
       document.getElementById(`${id}_best`).textContent = '—';
       document.getElementById(`${id}_worst`).textContent = '—';
     });
+    document.getElementById('evol_avg_daily').textContent = '—';
   };
 
   // Agréger par jour (dernière saisie du jour) au cas où plusieurs saisies existent pour la même date
@@ -707,6 +713,39 @@ function updateEvolution() {
     document.getElementById(`${id}_best`).textContent = best ? fmt(best) : '—';
     document.getElementById(`${id}_worst`).textContent = worst ? fmt(worst) : '—';
   });
+
+  // Progression journalière moyenne (PO + ETF), sur les jours de trading uniquement (hors week-end)
+  const avgEl = document.getElementById('evol_avg_daily');
+  const firstTotal = fieldGetters.evol_total(lastByDate[days[0]]);
+  const lastTotal = fieldGetters.evol_total(lastByDate[days[days.length - 1]]);
+  const tradingDays = countTradingDaysBetween(new Date(days[0]), new Date(days[days.length - 1]));
+
+  if (tradingDays > 0) {
+    const avgAmount = (lastTotal - firstTotal) / tradingDays;
+    const signAmount = avgAmount > 0 ? '+' : '';
+    let pctPart;
+    if (firstTotal > 0) {
+      const avgPct = (Math.pow(lastTotal / firstTotal, 1 / tradingDays) - 1) * 100;
+      pctPart = `${avgPct > 0 ? '+' : ''}${avgPct.toFixed(2)}%/j`;
+    } else {
+      pctPart = '—';
+    }
+    avgEl.textContent = `${signAmount}${avgAmount.toFixed(2)}€/j (${pctPart})`;
+  } else {
+    avgEl.textContent = '—';
+  }
+}
+
+function countTradingDaysBetween(startDateExclusive, endDateInclusive) {
+  let count = 0;
+  const d = new Date(startDateExclusive);
+  d.setDate(d.getDate() + 1); // commence le lendemain du premier jour
+  while (d <= endDateInclusive) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
 }
 
 function renderAllocationPie(canvasId, totalId, emptyId, getChart, setChart, allCategories) {
