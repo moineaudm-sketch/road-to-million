@@ -69,6 +69,18 @@
         <label style="font-size: 12px;">VUSA (€) : <input type="number" id="vusaPrice" placeholder="107.20" value="107.20" step="0.01" style="width: 80px;"></label>
       </div>
     </details>
+    <details style="margin-bottom: 1rem;">
+      <summary style="cursor: pointer; font-size: 12px; color: #666;">🔑 Sync auto GitHub (token)</summary>
+      <div style="padding: 0.75rem 0; font-size: 12px;">
+        <div id="ghTokenStatus" style="margin-bottom: 0.5rem; color: #666;">Chargement…</div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+          <input type="password" id="ghTokenInput" placeholder="ghp_... (fine-grained, Contents: Read and write)" style="width: 260px;">
+          <button class="secondary" onclick="saveGithubToken()">Enregistrer</button>
+          <button class="secondary" onclick="clearGithubToken()">Effacer</button>
+        </div>
+        <div style="color: #999; margin-top: 0.5rem; font-size: 11px;">Le token reste uniquement dans le stockage local de cet appareil (jamais dans le code de la page). Crée un token "Fine-grained" sur github.com/settings/tokens, limité au repo road-to-million, permission "Contents: Read and write". Une fois configuré, "Ajouter" / "Annuler dernière" / "Import" poussent automatiquement tracking.json sur GitHub.</div>
+      </div>
+    </details>
     <div class="form-row"><label style="min-width: 80px;">PO Balance :</label><input type="number" id="poInput" placeholder="€" step="0.01"></div>
     <div class="form-row"><label style="min-width: 80px;">VWRL :</label><input type="number" id="vwrlInput" placeholder="€ ou unités" step="0.01"><select id="vwrlType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
     <div class="form-row"><label style="min-width: 80px;">VUSA :</label><input type="number" id="vusaInput" placeholder="€ ou unités" step="0.01"><select id="vusaType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
@@ -291,6 +303,82 @@ function setSyncStatus(msg, cls) {
   el.className = 'sync-status' + (cls ? ' ' + cls : '');
 }
 
+// === Sync auto GitHub via token (Contents API) ===
+const GH_TOKEN_KEY = 'po_dashboard_gh_token';
+
+function getGithubToken() {
+  try { return localStorage.getItem(GH_TOKEN_KEY) || ''; } catch (e) { return ''; }
+}
+
+function saveGithubToken() {
+  const input = document.getElementById('ghTokenInput');
+  const val = input.value.trim();
+  if (!val) { showToast('❌ Token vide'); return; }
+  try {
+    localStorage.setItem(GH_TOKEN_KEY, val);
+  } catch (e) {
+    showToast('❌ Impossible de sauvegarder le token sur cet appareil');
+    return;
+  }
+  input.value = '';
+  updateGithubTokenStatus();
+  showToast('✓ Token enregistré sur cet appareil');
+}
+
+function clearGithubToken() {
+  try { localStorage.removeItem(GH_TOKEN_KEY); } catch (e) { /* ignore */ }
+  updateGithubTokenStatus();
+  showToast('✓ Token supprimé');
+}
+
+function updateGithubTokenStatus() {
+  const el = document.getElementById('ghTokenStatus');
+  if (!el) return;
+  el.textContent = getGithubToken()
+    ? '✓ Token configuré sur cet appareil — push auto actif'
+    : 'Aucun token — push auto désactivé, utilise "Export tracking.json" manuellement';
+}
+
+async function pushTrackingToGitHub() {
+  const token = getGithubToken();
+  if (!token) return; // pas de token = pas de push auto (silencieux, le flux manuel reste dispo)
+
+  const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/tracking.json`;
+  try {
+    const getRes = await fetch(`${apiUrl}?ref=${GITHUB_BRANCH}`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if (!getRes.ok) throw new Error(`Lecture du fichier distant: HTTP ${getRes.status}`);
+    const currentFile = await getRes.json();
+
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(trackingData, null, 2))));
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `Update tracking.json depuis le dashboard (${new Date().toLocaleString('fr-FR')})`,
+        content,
+        sha: currentFile.sha,
+        branch: GITHUB_BRANCH
+      })
+    });
+    if (!putRes.ok) {
+      const errJson = await putRes.json().catch(() => ({}));
+      throw new Error(errJson.message || `HTTP ${putRes.status}`);
+    }
+
+    setSyncStatus(`✓ Poussé sur GitHub (${new Date().toLocaleTimeString('fr-FR')})`, 'ok');
+    showToast('✓ tracking.json mis à jour sur GitHub');
+  } catch (e) {
+    console.error('Push GitHub échoué:', e);
+    showToast(`❌ Push GitHub échoué — utilise "Export tracking.json" en secours`);
+  }
+}
+
 async function fetchRemoteTracking() {
   const res = await fetch(`${TRACKING_JSON_URL}?_=${Date.now()}`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -300,6 +388,7 @@ async function fetchRemoteTracking() {
 }
 
 async function loadData() {
+  updateGithubTokenStatus();
   let remoteData = null;
   try {
     remoteData = await fetchRemoteTracking();
@@ -380,6 +469,7 @@ function addTracking() {
   trackingData.push({ date: dateStr, time: timeStr, po: poValue, vwrl_base: vwrlEur, vusa_base: vusaEur, dispo: dispoValue, entry_timestamp: now.getTime() });
 
   saveData();
+  pushTrackingToGitHub();
   document.getElementById('poInput').value = '';
   document.getElementById('vwrlInput').value = '';
   document.getElementById('vusaInput').value = '';
@@ -390,9 +480,9 @@ function addTracking() {
   updateAllCharts();
 }
 
-function deleteLastEntry() { if (trackingData.length > 0) { trackingData.pop(); saveData(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Entrée supprimée'); } }
+function deleteLastEntry() { if (trackingData.length > 0) { trackingData.pop(); saveData(); pushTrackingToGitHub(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Entrée supprimée'); } }
 function exportData() { const json = JSON.stringify(trackingData, null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `po-backup-${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); showToast('✓ Backup téléchargé'); }
-function importData() { const file = document.getElementById('importFile').files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { trackingData = JSON.parse(e.target.result); saveData(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Importé'); } catch (err) { showToast('❌ Erreur'); } document.getElementById('importFile').value = ''; }; reader.readAsText(file); }
+function importData() { const file = document.getElementById('importFile').files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { trackingData = JSON.parse(e.target.result); saveData(); pushTrackingToGitHub(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Importé'); } catch (err) { showToast('❌ Erreur'); } document.getElementById('importFile').value = ''; }; reader.readAsText(file); }
 
 function exportTrackingJson() {
   const json = JSON.stringify(trackingData, null, 2);
@@ -560,19 +650,10 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
 }
 
 function generateRealProjection() {
-  // Suivi réel + projection simple avec taux observé
+  // Suivi réel (points exacts saisis) puis continuation en projection sur la base moyenne
   if (trackingData.length === 0) return null;
 
-  const firstEntry = trackingData[0];
   const lastEntry = trackingData[trackingData.length - 1];
-  const daysBetween = Math.floor((new Date(lastEntry.date) - new Date(firstEntry.date)) / (1000 * 60 * 60 * 24));
-
-  // Taux observé (0.6% défaut si < 1 jour)
-  let dailyRateReal = 0.006;
-  if (daysBetween >= 1) {
-    const poGrowth = lastEntry.po / firstEntry.po;
-    dailyRateReal = Math.pow(poGrowth, 1 / daysBetween) - 1;
-  }
 
   // Créer map de suivi réel
   const trackingByDate = {};
@@ -597,8 +678,8 @@ function generateRealProjection() {
         vwrl = t.vwrl_base || 0;
         vusa = t.vusa_base || 0;
       } else if (new Date(dateStr) > new Date(lastEntry.date)) {
-        // Après dernier suivi : projeter avec taux observé
-        po = po * (1 + dailyRateReal);
+        // Après dernier suivi : continuer sur la base moyenne (même taux que le scénario "Moyen")
+        po = po * (1 + 0.010);
         vwrl = vwrl * Math.pow(1 + VWRL_ANNUAL_RATE, 1 / 252);
         vusa = vusa * Math.pow(1 + VUSA_ANNUAL_RATE, 1 / 252);
       }
@@ -611,7 +692,8 @@ function generateRealProjection() {
         vusa: vusa,
         etf_total: vwrl + vusa,
         total: po + vwrl + vusa,
-        livretA: 0
+        livretA: 0,
+        isActual: !!trackingByDate[dateStr]
       });
     }
 
@@ -930,30 +1012,16 @@ function updateAllCharts() {
   const maxY = Math.ceil(maxValueReal * 1.1 / 1000) * 1000; // Arrondir à 1000€ supérieur
   const maxYETF = maxY / 4; // Diviser par 4 après arrondi
 
-  // Grouper tracking par date (dernière saisie du jour)
-  const lastByDate = {}; trackingData.forEach(t => { lastByDate[t.date] = t; });
-  const today = new Date();
-  const trackDataTotal = new Array(labelsSlice.length).fill(null);
-  const trackDataPO = new Array(labelsSlice.length).fill(null);
-  const trackDataETF = new Array(labelsSlice.length).fill(null);
-  const trackDataVWRL = new Array(labelsSlice.length).fill(null);
-  const trackDataVUSA = new Array(labelsSlice.length).fill(null);
-
-  Object.values(lastByDate).forEach(t => {
-    const entryDate = new Date(t.date);
-    const daysSinceEntry = Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
-    const vwrlVal = applyAppreciation(t.vwrl_base, VWRL_ANNUAL_RATE, daysSinceEntry);
-    const vusaVal = applyAppreciation(t.vusa_base, VUSA_ANNUAL_RATE, daysSinceEntry);
-    const etfTotal = vwrlVal + vusaVal;
-    const idx = labelsSlice.indexOf(t.date);
-    if (idx >= 0) {
-      trackDataTotal[idx] = t.po + etfTotal;
-      trackDataPO[idx] = t.po;
-      trackDataETF[idx] = etfTotal;
-      trackDataVWRL[idx] = vwrlVal;
-      trackDataVUSA[idx] = vusaVal;
-    }
-  });
+  // Courbe "Suivi réel" : points exacts saisis jusqu'à aujourd'hui, puis continuation en projection sur la base moyenne.
+  // projRealSlice est déjà aligné jour par jour sur labelsSlice (voir construction de labelsSlice ci-dessus).
+  const hasRealData = projRealSlice.length > 0;
+  const trackDataTotal = hasRealData ? projRealSlice.map(d => d.total) : new Array(labelsSlice.length).fill(null);
+  const trackDataPO = hasRealData ? projRealSlice.map(d => d.po) : new Array(labelsSlice.length).fill(null);
+  const trackDataETF = hasRealData ? projRealSlice.map(d => d.etf_total) : new Array(labelsSlice.length).fill(null);
+  const trackDataVWRL = hasRealData ? projRealSlice.map(d => d.vwrl) : new Array(labelsSlice.length).fill(null);
+  const trackDataVUSA = hasRealData ? projRealSlice.map(d => d.vusa) : new Array(labelsSlice.length).fill(null);
+  // Point visible uniquement sur les dates réellement saisies ; la portion projetée reste une ligne sans marqueur
+  const trackPointRadius = hasRealData ? projRealSlice.map(d => d.isActual ? 3 : 0) : new Array(labelsSlice.length).fill(0);
 
   // Graphe PO
   const datasetsPO = [
@@ -961,7 +1029,7 @@ function updateAllCharts() {
     { label: 'Zone min-max', data: projPessSlice.map(d => d.po), borderColor: 'transparent', backgroundColor: 'rgba(26, 175, 122, 0.15)', fill: '+1', tension: 0.1, pointRadius: 0, borderWidth: 0 },
     { label: 'Moyen (1.0%/j)', data: projMeanSlice.map(d => d.po), borderColor: '#2a78d6', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'Optimiste (1.2%/j)', data: projOptSlice.map(d => d.po), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
-    { label: 'Suivi réel', data: trackDataPO, borderColor: '#e34948', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#e34948' }
+    { label: 'Suivi réel', data: trackDataPO, borderColor: '#e34948', borderWidth: 2, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#e34948' }
   ];
   if (chartPO) chartPO.destroy();
   chartPO = new Chart(document.getElementById('chartPO').getContext('2d'), createChartConfig(labelsSlice, datasetsPO, maxY));
@@ -977,9 +1045,9 @@ function updateAllCharts() {
     { label: 'ETF Total Pess', data: projPessSlice.map(d => d.etf_total), borderColor: '#999', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
     { label: 'ETF Total Moyen', data: projMeanSlice.map(d => d.etf_total), borderColor: '#000', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'ETF Total Opt', data: projOptSlice.map(d => d.etf_total), borderColor: '#666', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
-    { label: 'VWRL Réel', data: trackDataVWRL, borderColor: '#1baf7a', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#1baf7a' },
-    { label: 'VUSA Réel', data: trackDataVUSA, borderColor: '#eb6834', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#eb6834' },
-    { label: 'ETF Total Réel', data: trackDataETF, borderColor: '#e34948', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#e34948' }
+    { label: 'VWRL Réel', data: trackDataVWRL, borderColor: '#1baf7a', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#1baf7a' },
+    { label: 'VUSA Réel', data: trackDataVUSA, borderColor: '#eb6834', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#eb6834' },
+    { label: 'ETF Total Réel', data: trackDataETF, borderColor: '#e34948', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#e34948' }
   ];
   if (chartETF) chartETF.destroy();
   chartETF = new Chart(document.getElementById('chartETF').getContext('2d'), createChartConfig(labelsSlice, datasetsETF, maxYETF));
@@ -990,7 +1058,7 @@ function updateAllCharts() {
     { label: 'Zone min-max', data: projPessSlice.map(d => d.total), borderColor: 'transparent', backgroundColor: 'rgba(26, 175, 122, 0.15)', fill: '+1', tension: 0.1, pointRadius: 0, borderWidth: 0 },
     { label: 'Moyen (1.0%/j)', data: projMeanSlice.map(d => d.total), borderColor: '#2a78d6', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'Optimiste (1.2%/j)', data: projOptSlice.map(d => d.total), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
-    { label: 'Suivi réel', data: trackDataTotal, borderColor: '#e34948', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#e34948' }
+    { label: 'Suivi réel', data: trackDataTotal, borderColor: '#e34948', borderWidth: 2, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#e34948' }
   ];
   if (chartTotal) chartTotal.destroy();
   chartTotal = new Chart(document.getElementById('chartTotal').getContext('2d'), createChartConfig(labelsSlice, datasetsTotal, maxY));
