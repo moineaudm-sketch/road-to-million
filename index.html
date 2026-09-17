@@ -369,7 +369,7 @@ function updateChallengeCounter() {
   el.innerHTML = `🚀 Défi lancé depuis le ${startStr} — <span class="challenge-time">${days}j ${hours}h ${minutes}m ${seconds}s</span>`;
 }
 
-const VWRL_ANNUAL_RATE = 0.075; const VUSA_ANNUAL_RATE = 0.095; const VWRL_PRICE = 85.50; const VUSA_PRICE = 107.20; const START_DATE = new Date(2026, 8, 11); const TARGET = 1000000;
+const VWRL_ANNUAL_RATE = 0.055; const VUSA_ANNUAL_RATE = 0.09; const VWRL_PRICE = 85.50; const VUSA_PRICE = 107.20; const START_DATE = new Date(2026, 8, 11); const TARGET = 1000000;
 let trackingData = [];
 // Dernier recours seulement (ni distant ni cache local disponibles) — reflète les vraies premières saisies
 const initialEntries = [
@@ -714,7 +714,7 @@ function updateSoldes() {
   const portfolioTotal = last.po + etfTotal;
 
   // Calculer valeurs du scénario pessimiste pour aujourd'hui
-  const projPess = generateProjection(2000, 0.008, 0.05, 0.07);
+  const projPess = generateProjection(2000, 0.008, 0.025, 0.05);
   const today = new Date().toISOString().split('T')[0];
   const pessToday = projPess.find(d => d.date === today) || projPess[projPess.length - 1];
 
@@ -928,9 +928,9 @@ function generateRealProjection() {
 
 function updateETA() {
   const daysOfTrading = 2000;
-  const projPess = generateProjection(daysOfTrading, 0.008, 0.05, 0.07);
-  const projMean = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
-  const projOpt = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
+  const projPess = generateProjection(daysOfTrading, 0.008, 0.025, 0.05);
+  const projMean = generateProjection(daysOfTrading, 0.010, 0.055, 0.09);
+  const projOpt = generateProjection(daysOfTrading, 0.012, 0.09, 0.135);
   const projReal = generateRealProjection();
 
   const findETADate = (projection, target) => {
@@ -1111,9 +1111,9 @@ function updateNextTier() {
 
   // Calculer ETAs pour atteindre le prochain palier
   const daysOfTrading = 2000;
-  const projPess = generateProjection(daysOfTrading, 0.008, 0.05, 0.07);
-  const projMean = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
-  const projOpt = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
+  const projPess = generateProjection(daysOfTrading, 0.008, 0.025, 0.05);
+  const projMean = generateProjection(daysOfTrading, 0.010, 0.055, 0.09);
+  const projOpt = generateProjection(daysOfTrading, 0.012, 0.09, 0.135);
   const projReal = generateRealProjection();
 
   const findETADate = (projection, target) => {
@@ -1232,9 +1232,9 @@ function createChartConfig(labels, datasets, maxY = 2000) {
 
 function updateAllCharts() {
   const daysOfTrading = 2000;
-  const projPessRaw = generateProjection(daysOfTrading, 0.008, 0.05, 0.07);
-  const projMeanRaw = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
-  const projOptRaw = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
+  const projPessRaw = generateProjection(daysOfTrading, 0.008, 0.025, 0.05);
+  const projMeanRaw = generateProjection(daysOfTrading, 0.010, 0.055, 0.09);
+  const projOptRaw = generateProjection(daysOfTrading, 0.012, 0.09, 0.135);
 
   // Décimer à 1 point par semaine
   const projPess = decimateToWeekly(projPessRaw);
@@ -1309,12 +1309,12 @@ function updateAllCharts() {
 
   // Graphe ETF (VWRL, VUSA, Total)
   const datasetsETF = [
-    { label: 'VWRL Pess (5%/an)', data: projPessSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
-    { label: 'VWRL Moyen (7.5%/an)', data: projMeanSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
-    { label: 'VWRL Opt (10%/an)', data: projOptSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
-    { label: 'VUSA Pess (7%/an)', data: projPessSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
-    { label: 'VUSA Moyen (9.5%/an)', data: projMeanSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
-    { label: 'VUSA Opt (12%/an)', data: projOptSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
+    { label: 'VWRL Pess (2.5%/an)', data: projPessSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
+    { label: 'VWRL Moyen (5.5%/an)', data: projMeanSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'VWRL Opt (9%/an)', data: projOptSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
+    { label: 'VUSA Pess (5%/an)', data: projPessSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
+    { label: 'VUSA Moyen (9%/an)', data: projMeanSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'VUSA Opt (13.5%/an)', data: projOptSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
     { label: 'ETF Total Pess', data: projPessSlice.map(d => d.etf_total), borderColor: '#999', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
     { label: 'ETF Total Moyen', data: projMeanSlice.map(d => d.etf_total), borderColor: '#000', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'ETF Total Opt', data: projOptSlice.map(d => d.etf_total), borderColor: '#666', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
