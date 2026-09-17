@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PocketOption Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 1rem; color: #0b0b0b; }
+    h1 { font-size: 24px; font-weight: 500; margin-bottom: 1.5rem; }
+    h2 { font-size: 14px; font-weight: 600; margin-bottom: 0.75rem; margin-top: 1.5rem; }
+    .container { max-width: 100%; background: white; border-radius: 8px; padding: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0.75rem; align-items: flex-end; }
+    input, select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    input { width: 110px; }
+    button { padding: 8px 16px; background: #2a78d6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    button:hover { background: #1e5ba8; }
+    button.secondary { background: #666; }
+    button.secondary:hover { background: #555; }
+    .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; background: white; border-radius: 8px; border: 1px solid #eee; padding: 1rem; }
+    canvas { display: block; width: 100% !important; height: 100% !important; }
+    .tracking-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .tracking-table thead { background: #f0f0f0; }
+    .tracking-table th { padding: 8px 6px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd; }
+    .tracking-table th:first-child { text-align: left; }
+    .tracking-table td { padding: 8px 6px; border-bottom: 1px solid #eee; text-align: right; }
+    .tracking-table td:first-child { text-align: left; font-weight: 500; }
+    .tracking-table tbody tr:hover { background: #f9f9f9; }
+    .no-data { padding: 1rem; color: #999; font-size: 12px; text-align: center; }
+    .controls { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #1baf7a; color: white; padding: 12px 16px; border-radius: 4px; font-size: 13px; z-index: 1000; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    .soldes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; }
+    .solde-card { background: white; padding: 1rem; border-radius: 4px; border-left: 3px solid; }
+    .solde-label { font-size: 11px; color: #666; }
+    .solde-value { font-size: 20px; font-weight: 600; margin-top: 0.5rem; }
+
+    .sync-status { font-size: 11px; color: #666; margin-bottom: 0.75rem; }
+    .sync-status.ok { color: #1baf7a; }
+    .sync-status.offline { color: #eb6834; }
+
+    @media (max-width: 600px) {
+      .container { padding: 1rem; }
+      h1 { font-size: 18px; }
+      input { width: 85px; font-size: 13px; }
+      .form-row { gap: 6px; }
+      .tracking-table { font-size: 11px; }
+      .tracking-table th, .tracking-table td { padding: 6px 4px; }
+      .chart-container { height: 250px; }
+      .soldes-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>PocketOption Dashboard</h1>
+  <div class="sync-status" id="syncStatus">Chargement…</div>
+
+  <div class="section">
+    <h2>Saisie quotidienne</h2>
+    <details style="margin-bottom: 1rem;">
+      <summary style="cursor: pointer; font-size: 12px; color: #666;">Prix unitaires (optionnel)</summary>
+      <div style="padding: 0.75rem 0; display: flex; gap: 12px; flex-wrap: wrap;">
+        <label style="font-size: 12px;">VWRL (€) : <input type="number" id="vwrlPrice" placeholder="85.50" value="85.50" step="0.01" style="width: 80px;"></label>
+        <label style="font-size: 12px;">VUSA (€) : <input type="number" id="vusaPrice" placeholder="107.20" value="107.20" step="0.01" style="width: 80px;"></label>
+      </div>
+    </details>
+    <div class="form-row"><label style="min-width: 80px;">PO Balance :</label><input type="number" id="poInput" placeholder="€" step="0.01"></div>
+    <div class="form-row"><label style="min-width: 80px;">VWRL :</label><input type="number" id="vwrlInput" placeholder="€ ou unités" step="0.01"><select id="vwrlType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
+    <div class="form-row"><label style="min-width: 80px;">VUSA :</label><input type="number" id="vusaInput" placeholder="€ ou unités" step="0.01"><select id="vusaType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
+    <div class="form-row"><label style="min-width: 80px;">Livret A :</label><input type="number" id="dispoInput" placeholder="€" step="0.01"></div>
+    <div class="controls">
+      <button onclick="addTracking()">Ajouter</button>
+      <button class="secondary" onclick="deleteLastEntry()">Annuler dernière</button>
+      <button class="secondary" onclick="exportData()">📥 Export</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData()">
+      <button class="secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
+      <button class="secondary" onclick="exportTrackingJson()">🔄 Export tracking.json</button>
+      <button class="secondary" onclick="loadData()">🔁 Resync GitHub</button>
+    </div>
+  </div>
+
+  <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <h2 style="margin-top: 0;">Soldes Actuels</h2>
+    <div class="soldes-grid">
+      <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">PO actuel</div><div class="solde-value" id="solde_po">—</div></div>
+      <div class="solde-card" style="border-left-color: #999;"><div class="solde-label">Total retiré</div><div class="solde-value" id="solde_retired">—</div></div>
+      <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">VWRL</div><div class="solde-value" id="solde_vwrl">—</div></div>
+      <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">VUSA</div><div class="solde-value" id="solde_vusa">—</div></div>
+      <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Solde ETF</div><div class="solde-value" id="solde_etf">—</div></div>
+      <div class="solde-card" style="border-left-color: #8b5cf6;"><div class="solde-label">Livret A</div><div class="solde-value" id="solde_dispo">—</div></div>
+      <div class="solde-card" style="border-left-color: #000; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">PO + ETF</div><div class="solde-value" id="solde_total">—</div></div>
+      <div class="solde-card" style="border-left-color: #f59e0b; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">vs 300€ %</div><div class="solde-value" id="solde_total_pct">—</div></div>
+    </div>
+  </div>
+
+  <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <h2 style="margin-top: 0;">Suivi par Palier de Retrait</h2>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+      <label style="font-size: 12px;">Palier :
+        <select id="tierSelect" onchange="updateAllCharts()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px;">
+          <option value="1">Palier 1 (300€ → 600€)</option>
+          <option value="2">Palier 2 (600€ → 1,200€)</option>
+          <option value="3">Palier 3 (1,200€ → 2,400€)</option>
+          <option value="4">Palier 4 (2,400€ → 4,800€)</option>
+          <option value="5">Palier 5 (4,800€ → 9,600€)</option>
+          <option value="6">Palier 6 (9,600€ → 19,200€)</option>
+          <option value="7">Palier 7 (19,200€ → 38,400€)</option>
+          <option value="8">Palier 8 (38,400€ → 76,800€)</option>
+          <option value="9">Palier 9 (76,800€ → 153,600€)</option>
+          <option value="10">Palier 10 (153,600€ → 307,200€)</option>
+          <option value="11">Palier 11 (307,200€ → 614,400€)</option>
+          <option value="12">Palier 12 (614,400€ → 1,228,800€)</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Projection PO Balance</h2>
+    <div class="chart-container"><canvas id="chartPO"></canvas></div>
+  </div>
+
+  <div class="section">
+    <h2>Projection ETF (VWRL, VUSA, Total)</h2>
+    <div class="chart-container"><canvas id="chartETF"></canvas></div>
+  </div>
+
+  <div class="section">
+    <h2>Projection PO + ETF (Portefeuille)</h2>
+    <div class="chart-container"><canvas id="chartTotal"></canvas></div>
+  </div>
+
+  <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="margin: 0;">ETA €1,000,000 (PO + ETF)</h2>
+      <div style="font-size: 13px; font-weight: 600; color: #666;">Progression: <span id="million_pct">—</span></div>
+    </div>
+    <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; margin-bottom: 1.5rem; overflow: hidden;">
+      <div id="million_bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #eb6834, #2a78d6, #1baf7a); transition: width 0.3s;"></div>
+    </div>
+    <div class="soldes-grid">
+      <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">Pessimiste</div><div class="solde-value" id="eta_million_pess">—</div></div>
+      <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">Moyen</div><div class="solde-value" id="eta_million_mean">—</div></div>
+      <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">Optimiste</div><div class="solde-value" id="eta_million_opt">—</div></div>
+      <div class="solde-card" style="border-left-color: #e34948; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">Réel</div><div class="solde-value" id="eta_million_real">—</div></div>
+    </div>
+  </div>
+
+  <div style="background: #e0f2fe; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="margin: 0;">🤖 Objectif Annexe: Robot de Trading</h2>
+      <div style="font-size: 13px; font-weight: 600; color: #0369a1;">Progression: <span id="robot_pct">—</span></div>
+    </div>
+    <div style="width: 100%; height: 8px; background: #bae6fd; border-radius: 4px; margin-bottom: 1rem; overflow: hidden;">
+      <div id="robot_bar" style="height: 100%; width: 0%; background: #0284c7; transition: width 0.3s;"></div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 13px;">
+      <div>
+        <div style="color: #666; margin-bottom: 0.25rem;">Solde PO</div>
+        <div style="font-weight: 600; font-size: 16px;" id="robot_current">—</div>
+      </div>
+      <div>
+        <div style="color: #666; margin-bottom: 0.25rem;">Restant</div>
+        <div style="font-weight: 600; font-size: 16px; color: #0284c7;" id="robot_remaining">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background: #dbeafe; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <h2 style="margin: 0 0 1rem 0;">📈 Escalade Copie Automatique (+1% tous les 150€)</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; font-size: 13px;">
+      <div>
+        <div style="color: #1e40af; margin-bottom: 0.25rem; font-weight: 600;">% Copie Actuel</div>
+        <div style="font-weight: 600; font-size: 18px; color: #0284c7;" id="copy_percent">—</div>
+      </div>
+      <div>
+        <div style="color: #1e40af; margin-bottom: 0.25rem; font-weight: 600;">Prochain Palier</div>
+        <div style="font-weight: 600; font-size: 16px;" id="copy_next_target">—</div>
+      </div>
+      <div>
+        <div style="color: #1e40af; margin-bottom: 0.25rem; font-weight: 600;">Restant</div>
+        <div style="font-weight: 600; font-size: 16px; color: #0284c7;" id="copy_remaining">—</div>
+      </div>
+    </div>
+    <div style="width: 100%; height: 6px; background: #bfdbfe; border-radius: 3px; margin-top: 1rem; overflow: hidden;">
+      <div id="copy_bar" style="height: 100%; width: 0%; background: #0284c7; transition: width 0.3s;"></div>
+    </div>
+  </div>
+
+  <div style="background: #fff8e1; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h2 style="margin: 0;">Prochain Palier</h2>
+      <div style="font-size: 13px; font-weight: 600; color: #b45309;" id="nextTier_pct">—</div>
+    </div>
+    <div style="width: 100%; height: 8px; background: #fed7aa; border-radius: 4px; margin-bottom: 1rem; overflow: hidden;">
+      <div id="nextTier_bar" style="height: 100%; width: 0%; background: #f59e0b; transition: width 0.3s;"></div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1rem;">
+      <div style="font-size: 13px;">
+        <div style="font-weight: 600; margin-bottom: 0.5rem;" id="nextTierLabel">—</div>
+        <div style="color: #666; font-size: 12px; margin-bottom: 1rem;" id="nextTierRange">—</div>
+        <div style="color: #666; font-size: 12px; line-height: 1.6;" id="nextTierSplit">—</div>
+      </div>
+      <div>
+        <div style="font-weight: 600; margin-bottom: 0.5rem;">ETA Atteinte</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 12px;">
+          <div>Pess: <span id="eta_next_pess" style="font-weight: 600;">—</span></div>
+          <div>Moyen: <span id="eta_next_mean" style="font-weight: 600;">—</span></div>
+          <div>Opt: <span id="eta_next_opt" style="font-weight: 600;">—</span></div>
+          <div>Réel: <span id="eta_next_real" style="font-weight: 600;">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <h2 style="margin-top: 0;">ETA Indépendance Financière (Livret A)</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h3 style="font-size: 12px; font-weight: 600; margin: 0;">2,500 €/mois (€30,000)</h3>
+          <div style="font-size: 11px; font-weight: 600; color: #666;" id="indep_2500_pct">—</div>
+        </div>
+        <div style="width: 100%; height: 6px; background: #e5e7eb; border-radius: 3px; margin-bottom: 0.75rem; overflow: hidden;">
+          <div id="indep_2500_bar" style="height: 100%; width: 0%; background: #2a78d6; transition: width 0.3s;"></div>
+        </div>
+        <div class="soldes-grid">
+          <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">Pess</div><div class="solde-value" id="eta_indep_2500_pess" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">Moyen</div><div class="solde-value" id="eta_indep_2500_mean" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">Opt</div><div class="solde-value" id="eta_indep_2500_opt" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Réel</div><div class="solde-value" id="eta_indep_2500_real" style="font-size: 16px; font-weight: 600;">—</div></div>
+        </div>
+      </div>
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h3 style="font-size: 12px; font-weight: 600; margin: 0;">4,000 €/mois (€48,000)</h3>
+          <div style="font-size: 11px; font-weight: 600; color: #666;" id="indep_4000_pct">—</div>
+        </div>
+        <div style="width: 100%; height: 6px; background: #e5e7eb; border-radius: 3px; margin-bottom: 0.75rem; overflow: hidden;">
+          <div id="indep_4000_bar" style="height: 100%; width: 0%; background: #2a78d6; transition: width 0.3s;"></div>
+        </div>
+        <div class="soldes-grid">
+          <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">Pess</div><div class="solde-value" id="eta_indep_4000_pess" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">Moyen</div><div class="solde-value" id="eta_indep_4000_mean" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">Opt</div><div class="solde-value" id="eta_indep_4000_opt" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Réel</div><div class="solde-value" id="eta_indep_4000_real" style="font-size: 16px; font-weight: 600;">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Suivi Portfolio</h2>
+    <div style="margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px;">
+      <label><input type="checkbox" id="col_po" checked onchange="updateTrackingTable()"> PO</label>
+      <label><input type="checkbox" id="col_vwrl" checked onchange="updateTrackingTable()"> VWRL</label>
+      <label><input type="checkbox" id="col_vusa" checked onchange="updateTrackingTable()"> VUSA</label>
+      <label><input type="checkbox" id="col_totaletf" checked onchange="updateTrackingTable()"> Total ETF</label>
+      <label><input type="checkbox" id="col_dispo" checked onchange="updateTrackingTable()"> Dispo</label>
+      <label><input type="checkbox" id="col_total" checked onchange="updateTrackingTable()"> Portefeuille</label>
+    </div>
+    <table class="tracking-table"><thead><tr id="tableHead"><th>Date & Heure</th></tr></thead><tbody id="trackingTable"><tr><td colspan="7" class="no-data">Aucune donnée.</td></tr></tbody></table>
+  </div>
+</div>
+
+<script>
+// === Config GitHub (modifie ces 3 lignes si le repo change) ===
+const GITHUB_OWNER = 'moineaudm-sketch';
+const GITHUB_REPO = 'road-to-million';
+const GITHUB_BRANCH = 'main';
+const TRACKING_JSON_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/tracking.json`;
+
+const VWRL_ANNUAL_RATE = 0.075; const VUSA_ANNUAL_RATE = 0.095; const VWRL_PRICE = 85.50; const VUSA_PRICE = 107.20; const START_DATE = new Date(2026, 8, 14); const TARGET = 1000000;
+let trackingData = [];
+// Initialiser avec saisies de départ si vide
+const initialEntries = [
+  { date: '2026-09-14', time: '00:00', po: 300, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 14).getTime() },
+  { date: '2026-09-15', time: '00:00', po: 314.68, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 15).getTime() }
+];
+let chartPO = null; let chartETF = null; let chartTotal = null;
+
+function setSyncStatus(msg, cls) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'sync-status' + (cls ? ' ' + cls : '');
+}
+
+async function fetchRemoteTracking() {
+  const res = await fetch(`${TRACKING_JSON_URL}?_=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (!Array.isArray(json)) throw new Error('Format inattendu');
+  return json;
+}
+
+async function loadData() {
+  let remoteData = null;
+  try {
+    remoteData = await fetchRemoteTracking();
+  } catch (e) {
+    console.warn('tracking.json distant inaccessible, fallback localStorage:', e);
+  }
+
+  if (remoteData) {
+    trackingData = remoteData;
+    setSyncStatus(`✓ Synchronisé depuis GitHub (${new Date().toLocaleTimeString('fr-FR')})`, 'ok');
+  } else {
+    const saved = localStorage.getItem('po_dashboard_v2');
+    if (saved) {
+      try {
+        trackingData = JSON.parse(saved);
+      } catch (e) {
+        console.error('Erreur:', e);
+        trackingData = [...initialEntries];
+      }
+    } else {
+      trackingData = [...initialEntries];
+    }
+    setSyncStatus('⚠ Hors ligne — données locales (cache)', 'offline');
+  }
+
+  // Ajouter les entrées initiales si manquantes
+  const has300 = trackingData.some(t => t.date === '2026-09-14' && t.po === 300);
+  const has31468 = trackingData.some(t => t.date === '2026-09-15' && t.po === 314.68);
+
+  if (!has300) trackingData.unshift(initialEntries[0]);
+  if (!has31468) trackingData.push(initialEntries[1]);
+
+  // Trier par date pour être sûr
+  trackingData.sort((a, b) => {
+    const dateA = new Date(a.date + ' ' + (a.time || '00:00'));
+    const dateB = new Date(b.date + ' ' + (b.time || '00:00'));
+    return dateA - dateB;
+  });
+
+  saveData();
+  updateSoldes();
+  updateTrackingTable();
+  updateAllCharts();
+}
+function saveData() { localStorage.setItem('po_dashboard_v2', JSON.stringify(trackingData)); }
+function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
+function applyAppreciation(value, rate, days) { return value * Math.pow(1 + rate, days / 365); }
+
+function addTracking() {
+  const po = document.getElementById('poInput').value.trim();
+  const vwrl = document.getElementById('vwrlInput').value.trim();
+  const vwrlType = document.getElementById('vwrlType').value;
+  const vusa = document.getElementById('vusaInput').value.trim();
+  const vusaType = document.getElementById('vusaType').value;
+  const dispo = document.getElementById('dispoInput').value.trim();
+
+  if (!po && !vwrl && !vusa && !dispo) { showToast('❌ Remplis au moins un champ'); return; }
+  if (po && parseFloat(po) <= 0) { showToast('❌ PO doit être > 0'); return; }
+  if (vwrl && parseFloat(vwrl) <= 0) { showToast('❌ VWRL doit être > 0'); return; }
+  if (vusa && parseFloat(vusa) <= 0) { showToast('❌ VUSA doit être > 0'); return; }
+
+  let poValue = po ? parseFloat(po) : null;
+  let vwrlValue = vwrl ? parseFloat(vwrl) : null;
+  let vusaValue = vusa ? parseFloat(vusa) : null;
+  let dispoValue = dispo ? parseFloat(dispo) : null;
+
+  if (poValue === null) { poValue = 0; for (let i = trackingData.length - 1; i >= 0; i--) { if (trackingData[i].po) { poValue = trackingData[i].po; break; } } }
+  if (vwrlValue === null) { vwrlValue = 0; for (let i = trackingData.length - 1; i >= 0; i--) { if (trackingData[i].vwrl_base) { vwrlValue = trackingData[i].vwrl_base; break; } } }
+  if (vusaValue === null) { vusaValue = 0; for (let i = trackingData.length - 1; i >= 0; i--) { if (trackingData[i].vusa_base) { vusaValue = trackingData[i].vusa_base; break; } } }
+  if (dispoValue === null) { dispoValue = 0; }
+
+  const vwrlPrice = parseFloat(document.getElementById('vwrlPrice').value) || VWRL_PRICE;
+  const vusaPrice = parseFloat(document.getElementById('vusaPrice').value) || VUSA_PRICE;
+  const vwrlEur = vwrlType === 'units' && vwrlValue > 0 ? vwrlValue * vwrlPrice : vwrlValue;
+  const vusaEur = vusaType === 'units' && vusaValue > 0 ? vusaValue * vusaPrice : vusaValue;
+
+  const now = new Date(); const dateStr = now.toISOString().split('T')[0]; const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+  trackingData.push({ date: dateStr, time: timeStr, po: poValue, vwrl_base: vwrlEur, vusa_base: vusaEur, dispo: dispoValue, entry_timestamp: now.getTime() });
+
+  saveData();
+  document.getElementById('poInput').value = '';
+  document.getElementById('vwrlInput').value = '';
+  document.getElementById('vusaInput').value = '';
+  document.getElementById('dispoInput').value = '';
+  showToast(`✓ Ajout du ${dateStr} ${timeStr}`);
+  updateSoldes();
+  updateTrackingTable();
+  updateAllCharts();
+}
+
+function deleteLastEntry() { if (trackingData.length > 0) { trackingData.pop(); saveData(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Entrée supprimée'); } }
+function exportData() { const json = JSON.stringify(trackingData, null, 2); const blob = new Blob([json], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `po-backup-${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url); showToast('✓ Backup téléchargé'); }
+function importData() { const file = document.getElementById('importFile').files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { trackingData = JSON.parse(e.target.result); saveData(); updateSoldes(); updateTrackingTable(); updateAllCharts(); showToast('✓ Importé'); } catch (err) { showToast('❌ Erreur'); } document.getElementById('importFile').value = ''; }; reader.readAsText(file); }
+
+function exportTrackingJson() {
+  const json = JSON.stringify(trackingData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tracking.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✓ tracking.json téléchargé (${new Date().toLocaleString('fr-FR')}) — à committer/pusher dans le repo`);
+}
+
+function getComparisonColor(actual, expected) {
+  // Cas 0 = 0 → jaune
+  if (actual === 0 && expected === 0) return '#fbbf24';
+
+  const ratio = actual / expected;
+
+  if (ratio === 1) {
+    return '#fbbf24'; // Jaune (=)
+  } else if (ratio > 1) {
+    return '#22c55e'; // Vert (>)
+  } else {
+    return '#ef4444'; // Rouge (<)
+  }
+}
+
+function updateSoldes() {
+  if (trackingData.length === 0) {
+    document.getElementById('solde_po').textContent = '—';
+    document.getElementById('solde_vwrl').textContent = '—';
+    document.getElementById('solde_vusa').textContent = '—';
+    document.getElementById('solde_etf').textContent = '—';
+    document.getElementById('solde_dispo').textContent = '—';
+    document.getElementById('solde_total').textContent = '—';
+    document.getElementById('solde_total_pct').textContent = '—';
+    document.getElementById('solde_retired').textContent = '—';
+    document.getElementById('robot_pct').textContent = '—';
+    document.getElementById('robot_current').textContent = '—';
+    document.getElementById('robot_remaining').textContent = '—';
+    document.getElementById('copy_percent').textContent = '—';
+    document.getElementById('copy_next_target').textContent = '—';
+    document.getElementById('copy_remaining').textContent = '—';
+    document.getElementById('copy_bar').style.width = '0%';
+    return;
+  }
+
+  const last = trackingData[trackingData.length - 1];
+  const entryDate = new Date(last.date);
+  const daysSinceEntry = Math.floor((new Date() - entryDate) / (1000 * 60 * 60 * 24));
+
+  const vwrlVal = applyAppreciation(last.vwrl_base, VWRL_ANNUAL_RATE, daysSinceEntry);
+  const vusaVal = applyAppreciation(last.vusa_base, VUSA_ANNUAL_RATE, daysSinceEntry);
+  const etfTotal = vwrlVal + vusaVal;
+  const portfolioTotal = last.po + etfTotal;
+
+  // Calculer valeurs du scénario pessimiste pour aujourd'hui
+  const projPess = generateProjection(2000, 0.006, 0.05, 0.07);
+  const today = new Date().toISOString().split('T')[0];
+  const pessToday = projPess.find(d => d.date === today) || projPess[projPess.length - 1];
+
+  // Appliquer couleurs
+  const colorPO = getComparisonColor(last.po, pessToday.po);
+  const colorVWRL = getComparisonColor(vwrlVal, pessToday.vwrl);
+  const colorVUSA = getComparisonColor(vusaVal, pessToday.vusa);
+  const colorETF = getComparisonColor(etfTotal, pessToday.etf_total);
+  const colorTotal = getComparisonColor(portfolioTotal, pessToday.total);
+
+  document.getElementById('solde_po').closest('.solde-card').style.backgroundColor = colorPO;
+  document.getElementById('solde_vwrl').closest('.solde-card').style.backgroundColor = colorVWRL;
+  document.getElementById('solde_vusa').closest('.solde-card').style.backgroundColor = colorVUSA;
+  document.getElementById('solde_etf').closest('.solde-card').style.backgroundColor = colorETF;
+  document.getElementById('solde_total').closest('.solde-card').style.backgroundColor = colorTotal;
+  document.getElementById('solde_total_pct').closest('.solde-card').style.backgroundColor = colorTotal; // Même couleur que total
+  document.getElementById('solde_retired').closest('.solde-card').style.backgroundColor = '#fbbf24'; // Jaune
+  document.getElementById('solde_dispo').closest('.solde-card').style.backgroundColor = '#fbbf24'; // Jaune
+
+  document.getElementById('solde_po').textContent = `€${last.po.toFixed(2)}`;
+  document.getElementById('solde_vwrl').textContent = `€${vwrlVal.toFixed(2)}`;
+  document.getElementById('solde_vusa').textContent = `€${vusaVal.toFixed(2)}`;
+  document.getElementById('solde_etf').textContent = `€${etfTotal.toFixed(2)}`;
+  document.getElementById('solde_dispo').textContent = `€${last.dispo.toFixed(2)}`;
+  document.getElementById('solde_total').textContent = `€${portfolioTotal.toFixed(2)}`;
+  document.getElementById('solde_total_pct').textContent = `${((portfolioTotal - 300) / 300 * 100).toFixed(1) >= 0 ? '+' : ''}${((portfolioTotal - 300) / 300 * 100).toFixed(1)}%`;
+  document.getElementById('solde_retired').textContent = `€${(trackingData.reduce((sum, t) => sum, 0)).toFixed(2)}`;
+
+  // Objectif Robot Trading (1000€ PO seulement)
+  const robotTarget = 1000;
+  const robotPct = Math.min((last.po / robotTarget) * 100, 100);
+  const robotRemaining = Math.max(robotTarget - last.po, 0);
+
+  document.getElementById('robot_pct').textContent = `${robotPct.toFixed(1)}%`;
+  document.getElementById('robot_bar').style.width = `${robotPct}%`;
+  document.getElementById('robot_current').textContent = `€${last.po.toFixed(0)}`;
+  document.getElementById('robot_remaining').textContent = `€${robotRemaining.toFixed(0)}`;
+
+  // Escalade Copie (+1% tous les 150€)
+  const poBase = 300;
+  const poGrowth = Math.max(last.po - poBase, 0);
+  const copieSteps = Math.floor(poGrowth / 150);
+  const copiePercent = 2 + copieSteps; // Base 2%, +1% par palier
+  const nextCopieTarget = poBase + ((copieSteps + 1) * 150);
+  const copieRemaining = Math.max(nextCopieTarget - last.po, 0);
+  const copiePct = (poGrowth % 150) / 150 * 100;
+
+  document.getElementById('copy_percent').textContent = `${copiePercent}%`;
+  document.getElementById('copy_next_target').textContent = `€${nextCopieTarget.toFixed(0)}`;
+  document.getElementById('copy_remaining').textContent = `€${copieRemaining.toFixed(0)}`;
+  document.getElementById('copy_bar').style.width = `${copiePct}%`;
+
+  // Million (mis à jour dans updateETA)
+}
+
+function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnualRate) {
+  const data = []; let po = 307; let vwrl = 0; let vusa = 0; let livretA = 0; let poInitial = 307; let nextDoubleTarget = poInitial * 2; let doubleCount = 0;
+
+  let currentDate = new Date(START_DATE); let tradingDaysCount = 0;
+
+  while (tradingDaysCount < daysOfTrading) {
+    // Skip weekends
+    const dayOfWeek = currentDate.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      // Trading day
+      po = po * (1 + dailyRate);
+      vwrl = applyAppreciation(vwrl, vwrlAnnualRate, 1);
+      vusa = applyAppreciation(vusa, vusaAnnualRate, 1);
+
+      // Check for doubling and retrait logic
+      if (po >= nextDoubleTarget) {
+        const previousTarget = poInitial * Math.pow(2, doubleCount);
+        const gain = po - previousTarget;
+        const retrait = gain * 0.5; // Retirer 50% du gain
+        const toLivretA = retrait * 0.5; // 50% vers Livret A
+        const toETF = retrait * 0.5; // 50% vers ETF
+
+        // Split ETF: 60% VWRL, 40% VUSA (selon stratégie)
+        const toVWRL = toETF * 0.6;
+        const toVUSA = toETF * 0.4;
+
+        po -= retrait;
+        vwrl += toVWRL;
+        vusa += toVUSA;
+        livretA += toLivretA;
+        doubleCount += 1;
+        nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
+      }
+
+      data.push({
+        date: currentDate.toISOString().split('T')[0],
+        po,
+        vwrl,
+        vusa,
+        etf_total: vwrl + vusa,
+        total: po + vwrl + vusa,
+        livretA
+      });
+      tradingDaysCount++;
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return data;
+}
+
+function generateRealProjection() {
+  // Suivi réel + projection simple avec taux observé
+  if (trackingData.length === 0) return null;
+
+  const firstEntry = trackingData[0];
+  const lastEntry = trackingData[trackingData.length - 1];
+  const daysBetween = Math.floor((new Date(lastEntry.date) - new Date(firstEntry.date)) / (1000 * 60 * 60 * 24));
+
+  // Taux observé (0.6% défaut si < 1 jour)
+  let dailyRateReal = 0.006;
+  if (daysBetween >= 1) {
+    const poGrowth = lastEntry.po / firstEntry.po;
+    dailyRateReal = Math.pow(poGrowth, 1 / daysBetween) - 1;
+  }
+
+  // Créer map de suivi réel
+  const trackingByDate = {};
+  trackingData.forEach(t => { trackingByDate[t.date] = t; });
+
+  // Générer depuis START_DATE
+  const data = [];
+  let currentDate = new Date(START_DATE);
+  let po = 300;
+  let vwrl = 0;
+  let vusa = 0;
+
+  while (data.length < 2000) {
+    const dayOfWeek = currentDate.getDay();
+    const dateStr = currentDate.toISOString().split('T')[0];
+
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      // Utiliser suivi réel si existe
+      if (trackingByDate[dateStr]) {
+        const t = trackingByDate[dateStr];
+        po = t.po;
+        vwrl = t.vwrl_base || 0;
+        vusa = t.vusa_base || 0;
+      } else if (new Date(dateStr) > new Date(lastEntry.date)) {
+        // Après dernier suivi : projeter avec taux observé
+        po = po * (1 + dailyRateReal);
+        vwrl = vwrl * Math.pow(1 + VWRL_ANNUAL_RATE, 1 / 252);
+        vusa = vusa * Math.pow(1 + VUSA_ANNUAL_RATE, 1 / 252);
+      }
+      // Avant premier suivi : garder 300€
+
+      data.push({
+        date: dateStr,
+        po: po,
+        vwrl: vwrl,
+        vusa: vusa,
+        etf_total: vwrl + vusa,
+        total: po + vwrl + vusa,
+        livretA: 0
+      });
+    }
+
+    if (data.length >= 2000) break;
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return data;
+}
+
+function updateETA() {
+  const daysOfTrading = 2000;
+  const projPess = generateProjection(daysOfTrading, 0.006, 0.05, 0.07);
+  const projMean = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
+  const projOpt = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
+  const projReal = generateRealProjection();
+
+  const findETADate = (projection, target) => {
+    if (!projection) return '—';
+    for (let i = 0; i < projection.length; i++) {
+      if (projection[i].total >= target) {
+        const projDate = new Date(START_DATE);
+        let tradingDaysCount = 0;
+        while (tradingDaysCount < i) {
+          const dayOfWeek = projDate.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) tradingDaysCount++;
+          projDate.setDate(projDate.getDate() + 1);
+        }
+        return projDate.toISOString().split('T')[0];
+      }
+    }
+    return '—';
+  };
+
+  document.getElementById('eta_million_pess').textContent = findETADate(projPess, TARGET);
+  document.getElementById('eta_million_mean').textContent = findETADate(projMean, TARGET);
+  document.getElementById('eta_million_opt').textContent = findETADate(projOpt, TARGET);
+  document.getElementById('eta_million_real').textContent = findETADate(projReal, TARGET);
+
+  // Mise à jour % Million
+  let currentTotal = 0;
+  if (trackingData.length > 0) {
+    const last = trackingData[trackingData.length - 1];
+    const entryDate = new Date(last.date);
+    const daysSinceEntry = Math.floor((new Date() - entryDate) / (1000 * 60 * 60 * 24));
+    const vwrlVal = last.vwrl_base * Math.pow(1 + VWRL_ANNUAL_RATE, daysSinceEntry / 365);
+    const vusaVal = last.vusa_base * Math.pow(1 + VUSA_ANNUAL_RATE, daysSinceEntry / 365);
+    currentTotal = last.po + vwrlVal + vusaVal;
+  }
+  const millionPct = Math.min((currentTotal / TARGET) * 100, 100);
+  document.getElementById('million_pct').textContent = `${millionPct.toFixed(1)}%`;
+  document.getElementById('million_bar').style.width = `${millionPct}%`;
+
+  const findLivretETADate = (projection, target) => {
+    if (!projection) return '—';
+    for (let i = 0; i < projection.length; i++) {
+      if (projection[i].livretA >= target) {
+        const projDate = new Date(START_DATE);
+        let tradingDaysCount = 0;
+        while (tradingDaysCount < i) {
+          const dayOfWeek = projDate.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) tradingDaysCount++;
+          projDate.setDate(projDate.getDate() + 1);
+        }
+        return projDate.toISOString().split('T')[0];
+      }
+    }
+    return '—';
+  };
+
+  document.getElementById('eta_indep_2500_pess').textContent = findLivretETADate(projPess, 30000);
+  document.getElementById('eta_indep_2500_mean').textContent = findLivretETADate(projMean, 30000);
+  document.getElementById('eta_indep_2500_opt').textContent = findLivretETADate(projOpt, 30000);
+  document.getElementById('eta_indep_2500_real').textContent = findLivretETADate(projReal, 30000);
+
+  document.getElementById('eta_indep_4000_pess').textContent = findLivretETADate(projPess, 48000);
+  document.getElementById('eta_indep_4000_mean').textContent = findLivretETADate(projMean, 48000);
+  document.getElementById('eta_indep_4000_opt').textContent = findLivretETADate(projOpt, 48000);
+  document.getElementById('eta_indep_4000_real').textContent = findLivretETADate(projReal, 48000);
+
+  // Mise à jour % Indépendance
+  let currentLivretA = 0;
+  if (trackingData.length > 0) {
+    currentLivretA = trackingData[trackingData.length - 1].dispo || 0;
+  }
+
+  const indep2500Pct = Math.min((currentLivretA / 30000) * 100, 100);
+  const indep4000Pct = Math.min((currentLivretA / 48000) * 100, 100);
+
+  document.getElementById('indep_2500_pct').textContent = `${indep2500Pct.toFixed(1)}%`;
+  document.getElementById('indep_2500_bar').style.width = `${indep2500Pct}%`;
+
+  document.getElementById('indep_4000_pct').textContent = `${indep4000Pct.toFixed(1)}%`;
+  document.getElementById('indep_4000_bar').style.width = `${indep4000Pct}%`;
+}
+
+function updateNextTier() {
+  if (trackingData.length === 0) {
+    document.getElementById('nextTierLabel').textContent = '—';
+    document.getElementById('nextTierRange').textContent = '—';
+    document.getElementById('nextTierSplit').textContent = '—';
+    document.getElementById('nextTier_pct').textContent = '—';
+    document.getElementById('nextTier_bar').style.width = '0%';
+    document.getElementById('eta_next_pess').textContent = '—';
+    document.getElementById('eta_next_mean').textContent = '—';
+    document.getElementById('eta_next_opt').textContent = '—';
+    document.getElementById('eta_next_real').textContent = '—';
+    return;
+  }
+
+  const last = trackingData[trackingData.length - 1];
+  const currentPO = last.po;
+  const poInitial = 300;
+
+  // Trouver quel palier est actuellement en cours de déblocage
+  let tierToUnlock = 1;
+  for (let t = 1; t <= 12; t++) {
+    const tierTarget = poInitial * Math.pow(2, t);
+    if (currentPO >= tierTarget) {
+      tierToUnlock = t + 1; // Le suivant
+    } else {
+      break;
+    }
+  }
+
+  const currentTarget = poInitial * Math.pow(2, tierToUnlock - 1);
+  const nextTarget = poInitial * Math.pow(2, tierToUnlock);
+
+  // Retrait attendu = 50% du gain
+  const gain = nextTarget - currentTarget;
+  const retrait = gain * 0.5;
+  const toETF = retrait * 0.5;
+  const toLivretA = retrait * 0.5;
+  const toVWRL = toETF * 0.6;
+  const toVUSA = toETF * 0.4;
+
+  // Afficher info
+  document.getElementById('nextTierLabel').textContent = `Palier ${tierToUnlock} (€${currentTarget.toFixed(0)} → €${nextTarget.toFixed(0)})`;
+  document.getElementById('nextTierRange').textContent = `Progression: €${currentPO.toFixed(0)} / €${nextTarget.toFixed(0)} (${((currentPO - currentTarget) / (nextTarget - currentTarget) * 100).toFixed(1)}%) — Gain: €${gain.toFixed(0)}`;
+
+  // Mise à jour % et barre
+  const tierPct = Math.min((currentPO - currentTarget) / (nextTarget - currentTarget) * 100, 100);
+  document.getElementById('nextTier_pct').textContent = `${tierPct.toFixed(1)}%`;
+  document.getElementById('nextTier_bar').style.width = `${tierPct}%`;
+  document.getElementById('nextTierSplit').innerHTML = `
+    <div>Retrait (50% du gain): €${retrait.toFixed(0)}</div>
+    <div>├ Livret A: €${toLivretA.toFixed(0)}</div>
+    <div>└ ETF: €${toETF.toFixed(0)}</div>
+    <div style="margin-left: 1.2em;">├ VWRL (60%): €${toVWRL.toFixed(0)}</div>
+    <div style="margin-left: 1.2em;">└ VUSA (40%): €${toVUSA.toFixed(0)}</div>
+  `;
+
+  // Calculer ETAs pour atteindre le prochain palier
+  const daysOfTrading = 2000;
+  const projPess = generateProjection(daysOfTrading, 0.006, 0.05, 0.07);
+  const projMean = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
+  const projOpt = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
+  const projReal = generateRealProjection();
+
+  const findETADate = (projection, target) => {
+    if (!projection) return '—';
+    const found = projection.find(d => d.total >= target);
+    return found ? found.date : '+2000j';
+  };
+
+  document.getElementById('eta_next_pess').textContent = findETADate(projPess, nextTarget);
+  document.getElementById('eta_next_mean').textContent = findETADate(projMean, nextTarget);
+  document.getElementById('eta_next_opt').textContent = findETADate(projOpt, nextTarget);
+  document.getElementById('eta_next_real').textContent = findETADate(projReal, nextTarget);
+}
+
+function decimateToWeekly(projection) {
+  if (!projection || projection.length === 0) return projection;
+
+  const weekly = [projection[0]]; // Inclure le premier jour
+
+  for (let i = 5; i < projection.length; i += 5) { // Tous les 5 jours trading (~1 semaine)
+    weekly.push(projection[i]);
+  }
+
+  // Ajouter le dernier si pas déjà inclus
+  if (weekly[weekly.length - 1] !== projection[projection.length - 1]) {
+    weekly.push(projection[projection.length - 1]);
+  }
+
+  return weekly;
+}
+
+function calculateTiers(projection) {
+  if (!projection || projection.length === 0) return [];
+
+  const tiers = [];
+  let tier = 0;
+  let poInitial = 300;
+  let nextDoubleTarget = poInitial * 2;
+
+  for (let i = 0; i < projection.length; i++) {
+    if (projection[i].po >= nextDoubleTarget) {
+      tiers.push({
+        tierNum: tier + 1,
+        startIndex: i,
+        startDate: projection[i].date,
+        doubledAmount: nextDoubleTarget
+      });
+      tier += 1;
+      nextDoubleTarget = poInitial * Math.pow(2, tier + 1);
+
+      if (nextDoubleTarget > TARGET) break; // Arrêter si on dépasse 1M
+    }
+  }
+
+  return tiers;
+}
+
+function getTierDisplayRange(projection, tierNum, weeksDuration = 2) {
+  const tiers = calculateTiers(projection);
+  const tier = tiers.find(t => t.tierNum === tierNum);
+
+  // Si palier n'existe pas : afficher les ~2 semaines avant la fin
+  if (!tier) {
+    const weekPoints = weeksDuration * 1;
+    const end = projection.length - 1;
+    const start = Math.max(0, end - weekPoints);
+    return { start, end, tierInfo: null };
+  }
+
+  const weekPoints = weeksDuration * 1; // 1 point par semaine
+  const endIndex = Math.min(tier.startIndex + weekPoints, projection.length - 1);
+
+  // Palier 1 : du début jusqu'au doublement+2semaines
+  // Palier N : du doublement(N-1)+2semaines jusqu'au doublementN+2semaines
+  let startIndex = 0;
+  if (tierNum > 1) {
+    const prevTier = tiers.find(t => t.tierNum === tierNum - 1);
+    if (prevTier) {
+      startIndex = Math.min(prevTier.startIndex + weekPoints, projection.length - 1);
+    }
+  }
+
+  return {
+    start: Math.max(0, startIndex),
+    end: endIndex,
+    tierInfo: tier
+  };
+}
+
+function createChartConfig(labels, datasets, maxY = 2000) {
+  return {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { font: { size: 10 }, padding: 8, usePointStyle: true }
+        }
+      },
+      scales: {
+        y: {
+          ticks: { font: { size: 9 } },
+          grace: '0%',
+          min: 0,
+          max: maxY
+        },
+        x: { ticks: { font: { size: 8 }, maxRotation: 45 } }
+      }
+    }
+  };
+}
+
+function updateAllCharts() {
+  const daysOfTrading = 2000;
+  const projPessRaw = generateProjection(daysOfTrading, 0.006, 0.05, 0.07);
+  const projMeanRaw = generateProjection(daysOfTrading, 0.010, 0.075, 0.095);
+  const projOptRaw = generateProjection(daysOfTrading, 0.012, 0.10, 0.12);
+
+  // Décimer à 1 point par semaine
+  const projPess = decimateToWeekly(projPessRaw);
+  const projMean = decimateToWeekly(projMeanRaw);
+  const projOpt = decimateToWeekly(projOptRaw);
+  const projRealRaw = generateRealProjection();
+  const projReal = projRealRaw ? decimateToWeekly(projRealRaw) : null;
+
+  // Récupérer palier sélectionné
+  const tierNum = parseInt(document.getElementById('tierSelect').value) || 1;
+  const tierRange = getTierDisplayRange(projMean, tierNum, 2); // 2 semaines après doublement (scénario moyen)
+
+  // Extraire la plage pour ce palier
+  const start = tierRange.start;
+  const end = tierRange.end;
+
+  const projPessSlice = projPess.slice(start, end + 1);
+  const projMeanSlice = projMean.slice(start, end + 1);
+  const projOptSlice = projOpt.slice(start, end + 1);
+  const projRealSlice = projReal ? projReal.slice(start, end + 1) : [];
+
+  // Utiliser projReal pour labels si disponible, sinon projMean
+  const labelsSlice = (projRealSlice.length > 0 ? projRealSlice : projMeanSlice).map(d => d.date);
+
+  // Calculer max Y = max des slices affichées × 1.1
+  const allValues = [
+    ...projPessSlice.map(d => d.po),
+    ...projMeanSlice.map(d => d.po),
+    ...projOptSlice.map(d => d.po),
+    ...projPessSlice.map(d => d.etf_total),
+    ...projMeanSlice.map(d => d.etf_total),
+    ...projOptSlice.map(d => d.etf_total),
+    ...projPessSlice.map(d => d.total),
+    ...projMeanSlice.map(d => d.total),
+    ...projOptSlice.map(d => d.total),
+  ];
+  const maxValueReal = Math.max(...allValues);
+  const maxY = Math.ceil(maxValueReal * 1.1 / 1000) * 1000; // Arrondir à 1000€ supérieur
+  const maxYETF = maxY / 4; // Diviser par 4 après arrondi
+
+  // Grouper tracking par date (dernière saisie du jour)
+  const lastByDate = {}; trackingData.forEach(t => { lastByDate[t.date] = t; });
+  const today = new Date();
+  const trackDataTotal = new Array(labelsSlice.length).fill(null);
+  const trackDataPO = new Array(labelsSlice.length).fill(null);
+  const trackDataETF = new Array(labelsSlice.length).fill(null);
+  const trackDataVWRL = new Array(labelsSlice.length).fill(null);
+  const trackDataVUSA = new Array(labelsSlice.length).fill(null);
+
+  Object.values(lastByDate).forEach(t => {
+    const entryDate = new Date(t.date);
+    const daysSinceEntry = Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
+    const vwrlVal = applyAppreciation(t.vwrl_base, VWRL_ANNUAL_RATE, daysSinceEntry);
+    const vusaVal = applyAppreciation(t.vusa_base, VUSA_ANNUAL_RATE, daysSinceEntry);
+    const etfTotal = vwrlVal + vusaVal;
+    const idx = labelsSlice.indexOf(t.date);
+    if (idx >= 0) {
+      trackDataTotal[idx] = t.po + etfTotal;
+      trackDataPO[idx] = t.po;
+      trackDataETF[idx] = etfTotal;
+      trackDataVWRL[idx] = vwrlVal;
+      trackDataVUSA[idx] = vusaVal;
+    }
+  });
+
+  // Graphe PO
+  const datasetsPO = [
+    { label: 'Pessimiste (0.6%/j)', data: projPessSlice.map(d => d.po), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Zone min-max', data: projPessSlice.map(d => d.po), borderColor: 'transparent', backgroundColor: 'rgba(26, 175, 122, 0.15)', fill: '+1', tension: 0.1, pointRadius: 0, borderWidth: 0 },
+    { label: 'Moyen (1.0%/j)', data: projMeanSlice.map(d => d.po), borderColor: '#2a78d6', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Optimiste (1.2%/j)', data: projOptSlice.map(d => d.po), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Suivi réel', data: trackDataPO, borderColor: '#e34948', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#e34948' }
+  ];
+  if (chartPO) chartPO.destroy();
+  chartPO = new Chart(document.getElementById('chartPO').getContext('2d'), createChartConfig(labelsSlice, datasetsPO, maxY));
+
+  // Graphe ETF (VWRL, VUSA, Total)
+  const datasetsETF = [
+    { label: 'VWRL Pess (5%/an)', data: projPessSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
+    { label: 'VWRL Moyen (7.5%/an)', data: projMeanSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'VWRL Opt (10%/an)', data: projOptSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
+    { label: 'VUSA Pess (7%/an)', data: projPessSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
+    { label: 'VUSA Moyen (9.5%/an)', data: projMeanSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'VUSA Opt (12%/an)', data: projOptSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
+    { label: 'ETF Total Pess', data: projPessSlice.map(d => d.etf_total), borderColor: '#999', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
+    { label: 'ETF Total Moyen', data: projMeanSlice.map(d => d.etf_total), borderColor: '#000', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'ETF Total Opt', data: projOptSlice.map(d => d.etf_total), borderColor: '#666', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
+    { label: 'VWRL Réel', data: trackDataVWRL, borderColor: '#1baf7a', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#1baf7a' },
+    { label: 'VUSA Réel', data: trackDataVUSA, borderColor: '#eb6834', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#eb6834' },
+    { label: 'ETF Total Réel', data: trackDataETF, borderColor: '#e34948', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#e34948' }
+  ];
+  if (chartETF) chartETF.destroy();
+  chartETF = new Chart(document.getElementById('chartETF').getContext('2d'), createChartConfig(labelsSlice, datasetsETF, maxYETF));
+
+  // Graphe Total (PO + ETF)
+  const datasetsTotal = [
+    { label: 'Pessimiste (0.6%/j)', data: projPessSlice.map(d => d.total), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Zone min-max', data: projPessSlice.map(d => d.total), borderColor: 'transparent', backgroundColor: 'rgba(26, 175, 122, 0.15)', fill: '+1', tension: 0.1, pointRadius: 0, borderWidth: 0 },
+    { label: 'Moyen (1.0%/j)', data: projMeanSlice.map(d => d.total), borderColor: '#2a78d6', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Optimiste (1.2%/j)', data: projOptSlice.map(d => d.total), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'Suivi réel', data: trackDataTotal, borderColor: '#e34948', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 2, pointBackgroundColor: '#e34948' }
+  ];
+  if (chartTotal) chartTotal.destroy();
+  chartTotal = new Chart(document.getElementById('chartTotal').getContext('2d'), createChartConfig(labelsSlice, datasetsTotal, maxY));
+
+  updateETA();
+  updateNextTier();
+}
+
+function updateTrackingTable() {
+  const tbody = document.getElementById('trackingTable');
+  const thead = document.getElementById('tableHead');
+
+  if (trackingData.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucune donnée.</td></tr>'; return; }
+
+  const columns = [
+    { id: 'datetime', label: 'Date & Heure', visible: true },
+    { id: 'po', label: 'PO (€)', visible: document.getElementById('col_po').checked },
+    { id: 'vwrl', label: 'VWRL (€)', visible: document.getElementById('col_vwrl').checked },
+    { id: 'vusa', label: 'VUSA (€)', visible: document.getElementById('col_vusa').checked },
+    { id: 'etf_total', label: 'Total ETF (€)', visible: document.getElementById('col_totaletf').checked },
+    { id: 'dispo', label: 'Dispo (€)', visible: document.getElementById('col_dispo').checked },
+    { id: 'total', label: 'Portefeuille (€)', visible: document.getElementById('col_total').checked }
+  ];
+
+  thead.innerHTML = columns.filter(c => c.visible).map(c => `<th>${c.label}</th>`).join('');
+
+  const today = new Date(); let html = ''; let lastDate = null;
+  trackingData.forEach((row) => {
+    const entryDate = new Date(row.date); const daysSinceEntry = Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
+    const vwrlVal = applyAppreciation(row.vwrl_base, VWRL_ANNUAL_RATE, daysSinceEntry);
+    const vusaVal = applyAppreciation(row.vusa_base, VUSA_ANNUAL_RATE, daysSinceEntry);
+    const totalEtf = vwrlVal + vusaVal; const total = row.po + totalEtf;
+    if (lastDate !== row.date) { if (lastDate !== null) html += '<tr style="height: 4px; background: #e0e0e0;"><td colspan="7"></td></tr>'; lastDate = row.date; }
+    const timeStr = row.time || '—';
+    const rowData = { datetime: `${row.date} ${timeStr}`, po: row.po.toFixed(2), vwrl: vwrlVal.toFixed(2), vusa: vusaVal.toFixed(2), etf_total: totalEtf.toFixed(2), dispo: row.dispo.toFixed(2), total: total.toFixed(2) };
+    let rowHtml = '<tr>'; columns.forEach(col => { if (col.visible) rowHtml += `<td>${rowData[col.id]}</td>`; }); rowHtml += '</tr>';
+    html += rowHtml;
+  });
+  tbody.innerHTML = html;
+}
+
+loadData();
+</script>
+
+</body>
+</html>
