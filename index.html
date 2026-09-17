@@ -688,6 +688,13 @@ function generateRealProjection() {
   let po = 300;
   let vwrl = 0;
   let vusa = 0;
+  let livretA = 0;
+
+  // Politique de retrait aux paliers de doublement (même règle que "Prochain Palier" : base 300€) —
+  // initialisée seulement quand la continuation démarre, à partir du solde réel atteint
+  const poInitial = 300;
+  let doubleCount = null;
+  let nextDoubleTarget = null;
 
   while (data.length < 2000) {
     const dayOfWeek = currentDate.getDay();
@@ -701,10 +708,35 @@ function generateRealProjection() {
         vwrl = t.vwrl_base || 0;
         vusa = t.vusa_base || 0;
       } else if (new Date(dateStr) > new Date(lastEntry.date)) {
+        if (doubleCount === null) {
+          // Déterminer combien de paliers sont déjà dépassés par le solde réel actuel
+          doubleCount = 0;
+          while (po >= poInitial * Math.pow(2, doubleCount + 1)) doubleCount++;
+          nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
+        }
+
         // Après dernier suivi : continuer sur la base moyenne (même taux que le scénario "Moyen")
         po = po * (1 + 0.010);
         vwrl = vwrl * Math.pow(1 + VWRL_ANNUAL_RATE, 1 / 252);
         vusa = vusa * Math.pow(1 + VUSA_ANNUAL_RATE, 1 / 252);
+
+        // Retrait à 50% du gain au franchissement d'un palier (identique à generateProjection)
+        if (po >= nextDoubleTarget) {
+          const previousTarget = poInitial * Math.pow(2, doubleCount);
+          const gain = po - previousTarget;
+          const retrait = gain * 0.5;
+          const toLivretA = retrait * 0.5;
+          const toETF = retrait * 0.5;
+          const toVWRL = toETF * 0.6;
+          const toVUSA = toETF * 0.4;
+
+          po -= retrait;
+          vwrl += toVWRL;
+          vusa += toVUSA;
+          livretA += toLivretA;
+          doubleCount += 1;
+          nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
+        }
       }
       // Avant premier suivi : garder 300€
 
@@ -715,7 +747,7 @@ function generateRealProjection() {
         vusa: vusa,
         etf_total: vwrl + vusa,
         total: po + vwrl + vusa,
-        livretA: 0,
+        livretA: livretA,
         isActual: !!trackingByDate[dateStr]
       });
     }
