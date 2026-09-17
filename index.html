@@ -140,6 +140,7 @@
         </select>
       </label>
     </div>
+    <div style="font-size: 11px; color: #666; margin-top: 0.75rem;">Taux réel observé : <span id="realRateInfo" style="font-weight: 600;">—</span></div>
   </div>
 
   <div class="section">
@@ -820,6 +821,21 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
   return data;
 }
 
+function computeObservedDailyRate() {
+  // Taux composé quotidien observé entre le premier et le dernier jour saisi (agrégés par jour)
+  const lastByDate = {};
+  trackingData.forEach(t => { lastByDate[t.date] = t; });
+  const days = Object.keys(lastByDate).sort();
+  if (days.length < 2) return null;
+
+  const first = lastByDate[days[0]];
+  const last = lastByDate[days[days.length - 1]];
+  const daysBetween = Math.floor((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24));
+  if (daysBetween < 1 || first.po <= 0) return null;
+
+  return Math.pow(last.po / first.po, 1 / daysBetween) - 1;
+}
+
 function generateRealProjection() {
   // Suivi réel (points exacts saisis) puis continuation en projection sur la base moyenne
   if (trackingData.length === 0) return null;
@@ -1223,6 +1239,15 @@ function updateAllCharts() {
   const projOpt = decimateToWeekly(projOptRaw);
   const projRealRaw = generateRealProjection();
   const projReal = projRealRaw ? decimateToWeekly(projRealRaw) : null;
+
+  // Info transparence : taux réel observé vs taux utilisé pour la continuation projetée
+  const observedRate = computeObservedDailyRate();
+  const realRateEl = document.getElementById('realRateInfo');
+  if (realRateEl) {
+    realRateEl.textContent = observedRate !== null
+      ? `${(observedRate * 100).toFixed(2)}%/j sur l'historique — la projection continue à 1.00%/j (moyenne) après la dernière saisie`
+      : '—';
+  }
 
   // Récupérer palier sélectionné
   const tierNum = parseInt(document.getElementById('tierSelect').value) || 1;
