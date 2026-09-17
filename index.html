@@ -1122,7 +1122,8 @@ function updateAllCharts() {
     ...projOptSlice.map(d => d.total),
   ];
   const maxValueReal = Math.max(...allValues);
-  const maxY = Math.ceil(maxValueReal * 1.1 / 1000) * 1000; // Arrondir à 1000€ supérieur
+  let maxY = Math.ceil(maxValueReal * 1.1 / 1000) * 1000; // Arrondir à 1000€ supérieur
+  if (tierNum === 1) maxY = maxY / 2; // Palier 1 : zoom supplémentaire, les montants réels y sont bien plus bas
   const maxYETF = maxY / 4; // Diviser par 4 après arrondi
 
   // Courbe "Suivi réel" : points exacts saisis jusqu'à aujourd'hui, puis continuation en projection sur la base moyenne.
