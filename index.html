@@ -19,6 +19,7 @@
     button:hover { background: #1e5ba8; }
     button.secondary { background: #666; }
     button.secondary:hover { background: #555; }
+    button:disabled, button:disabled:hover { background: #ccc; cursor: not-allowed; }
     .chart-container { position: relative; height: 300px; margin-bottom: 1.5rem; background: white; border-radius: 8px; border: 1px solid #eee; padding: 1rem; }
     canvas { display: block; width: 100% !important; height: 100% !important; }
     .tracking-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -165,6 +166,18 @@
       </label>
     </div>
     <div style="font-size: 11px; color: #666; margin-top: 0.75rem;">Taux réel observé : <span id="realRateInfo" style="font-weight: 600;">—</span></div>
+  </div>
+
+  <div class="section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.5rem;">
+      <button class="secondary" id="weekPrevBtn" onclick="navigateWeek(1)" style="flex-shrink: 0;">◀ Préc.</button>
+      <div style="text-align: center;">
+        <h2 style="margin: 0;" id="weekChartTitle">Semaine 1</h2>
+        <div style="font-size: 11px; color: #666;" id="weekChartRange">—</div>
+      </div>
+      <button class="secondary" id="weekNextBtn" onclick="navigateWeek(-1)" style="flex-shrink: 0;">Suiv. ▶</button>
+    </div>
+    <div class="chart-container"><canvas id="chartWeek"></canvas></div>
   </div>
 
   <div class="section">
@@ -408,7 +421,8 @@ const initialEntries = [
   { date: '2026-09-15', time: '21:00', po: 291.12, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 15, 21, 0).getTime() },
   { date: '2026-09-16', time: '21:00', po: 364.99, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 16, 21, 0).getTime() }
 ];
-let chartPO = null; let chartETF = null; let chartTotal = null; let chartAllocation = null; let chartAllocationMillion = null;
+let chartPO = null; let chartETF = null; let chartTotal = null; let chartAllocation = null; let chartAllocationMillion = null; let chartWeek = null;
+let currentWeekIndex = 1; // 1 = la semaine qui se termine maintenant, 2 = la précédente, etc.
 
 function setSyncStatus(msg, cls) {
   const el = document.getElementById('syncStatus');
@@ -1481,7 +1495,137 @@ function createChartConfig(labels, datasets, maxY = 2000) {
   };
 }
 
+const WEEK_DOW_ABBR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+function formatWeekLabel(date) {
+  const dow = WEEK_DOW_ABBR[date.getDay()];
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  return `${dow} ${dd}/${mm}`;
+}
+
+// Lundi de la semaine calendaire (ISO, semaine commence lundi) contenant la date donnée
+function getMondayOfWeek(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay(); // 0=Dim, 1=Lun, ..., 6=Sam
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function createWeekChartConfig(labels, data, yMin, yMax) {
+  return {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'PO (réel)',
+        data,
+        borderColor: '#e34948',
+        backgroundColor: 'rgba(227, 73, 72, 0.08)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.15,
+        pointRadius: 4,
+        pointBackgroundColor: '#e34948',
+        spanGaps: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      // Ce graphe est détruit/recréé à chaque rafraîchissement ; l'animation d'entrée entrait en
+      // conflit avec le fondu du tooltip au premier survol (même correctif que le camembert).
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: (ctx) => `PO : ${ctx.parsed.y === null ? '—' : '€' + ctx.parsed.y.toFixed(2)}`
+          }
+        }
+      },
+      scales: {
+        y: { ticks: { font: { size: 9 } }, min: yMin, max: yMax },
+        x: { ticks: { font: { size: 9 } } }
+      }
+    }
+  };
+}
+
+// Semaine 1 = celle qui se termine maintenant ; on ne remonte pas avant la semaine de START_DATE
+function getMaxWeekIndex() {
+  const currentMonday = getMondayOfWeek(new Date());
+  const startMonday = getMondayOfWeek(START_DATE);
+  return Math.round((currentMonday - startMonday) / (7 * 24 * 60 * 60 * 1000)) + 1;
+}
+
+function navigateWeek(delta) {
+  let newIndex = currentWeekIndex + delta;
+  if (newIndex < 1) newIndex = 1; // pas de semaine future au-delà de la semaine en cours
+  const maxWeekIndex = getMaxWeekIndex();
+  if (newIndex > maxWeekIndex) newIndex = maxWeekIndex; // pas avant le début du projet
+  currentWeekIndex = newIndex;
+  updateWeekChart();
+}
+
+function updateWeekChart() {
+  const canvas = document.getElementById('chartWeek');
+  if (!canvas) return;
+
+  const currentMonday = getMondayOfWeek(new Date());
+  const weekMonday = new Date(currentMonday);
+  weekMonday.setDate(weekMonday.getDate() - (currentWeekIndex - 1) * 7);
+
+  // Vendredi précédent → Lun Mar Mer Jeu Ven de la semaine → Lundi suivant (repères avant/après la semaine de trading)
+  const offsets = [-3, 0, 1, 2, 3, 4, 7];
+  const targetDates = offsets.map(o => { const d = new Date(weekMonday); d.setDate(d.getDate() + o); return d; });
+
+  // Ne pas remonter avant le début du projet
+  const validDates = targetDates.filter(d => d >= START_DATE);
+
+  const projReal = generateRealProjection();
+  const poByDate = {};
+  if (projReal) projReal.forEach(d => { poByDate[d.date] = d.po; });
+
+  const labels = validDates.map(formatWeekLabel);
+  const data = validDates.map(d => {
+    const v = poByDate[toLocalDateStr(d)];
+    return v === undefined ? null : v;
+  });
+
+  const validValues = data.filter(v => v !== null);
+  let yMin = 0, yMax = 1000;
+  if (validValues.length > 0) {
+    const rawMin = Math.min(...validValues);
+    const rawMax = Math.max(...validValues);
+    const pad = Math.max((rawMax - rawMin) * 0.15, 5);
+    yMin = Math.max(0, Math.floor(rawMin - pad));
+    yMax = Math.ceil(rawMax + pad);
+    if (yMax === yMin) yMax = yMin + 10;
+  }
+
+  if (chartWeek) chartWeek.destroy();
+  chartWeek = new Chart(canvas.getContext('2d'), createWeekChartConfig(labels, data, yMin, yMax));
+
+  document.getElementById('weekChartTitle').textContent = `Semaine ${currentWeekIndex}`;
+  if (validDates.length > 0) {
+    const first = validDates[0]; const last = validDates[validDates.length - 1];
+    document.getElementById('weekChartRange').textContent = `${formatWeekLabel(first)} → ${formatWeekLabel(last)}`;
+  } else {
+    document.getElementById('weekChartRange').textContent = '—';
+  }
+
+  // Désactiver "Suivant" à la semaine en cours (pas de semaine future), et "Précédent" avant le début du projet
+  document.getElementById('weekNextBtn').disabled = currentWeekIndex <= 1;
+  document.getElementById('weekPrevBtn').disabled = currentWeekIndex >= getMaxWeekIndex();
+}
+
 function updateAllCharts() {
+  updateWeekChart();
   const daysOfTrading = 2000;
   const projPessRaw = generateProjection(daysOfTrading, 0.008, 0.025, 0.05);
   const projMeanRaw = generateProjection(daysOfTrading, 0.010, 0.055, 0.09);
