@@ -353,6 +353,13 @@
         <div style="color: #999; margin-top: 0.5rem; font-size: 11px;">Le token reste uniquement dans le stockage local de cet appareil (jamais dans le code de la page). Crée un token "Fine-grained" sur github.com/settings/tokens, limité au repo road-to-million, permission "Contents: Read and write". Une fois configuré, "Ajouter" / "Annuler dernière" / "Import" poussent automatiquement tracking.json sur GitHub.</div>
       </div>
     </details>
+    <div class="form-row">
+      <label style="min-width: 80px;">Date/heure :</label>
+      <input type="date" id="entryDateInput">
+      <input type="time" id="entryTimeInput">
+      <button class="secondary" onclick="resetEntryDateTime()" style="padding: 8px 10px; font-size: 12px;">Maintenant</button>
+    </div>
+    <div style="font-size: 11px; color: #999; margin-bottom: 0.75rem;">Session du soir/nuit saisie le lendemain ? Change la date avant d'ajouter.</div>
     <div class="form-row"><label style="min-width: 80px;">PO Balance :</label><input type="number" id="poInput" placeholder="€" step="0.01"></div>
     <div class="form-row"><label style="min-width: 80px;">VWRL :</label><input type="number" id="vwrlInput" placeholder="€ ou unités" step="0.01"><select id="vwrlType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
     <div class="form-row"><label style="min-width: 80px;">VUSA :</label><input type="number" id="vusaInput" placeholder="€ ou unités" step="0.01"><select id="vusaType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
@@ -572,6 +579,23 @@ function toLocalDateStr(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Construit un timestamp local à partir d'une date (YYYY-MM-DD) et heure (HH:MM) saisies dans le formulaire
+function parseEntryDateTime(dateStr, timeStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = (timeStr || '00:00').split(':').map(Number);
+  return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
+}
+
+// Réinitialise les champs date/heure du formulaire de saisie sur "maintenant"
+function resetEntryDateTime() {
+  const dateEl = document.getElementById('entryDateInput');
+  const timeEl = document.getElementById('entryTimeInput');
+  if (!dateEl || !timeEl) return;
+  const now = new Date();
+  dateEl.value = toLocalDateStr(now);
+  timeEl.value = now.toTimeString().split(' ')[0].substring(0, 5);
+}
+
 function addTracking() {
   const po = document.getElementById('poInput').value.trim();
   const vwrl = document.getElementById('vwrlInput').value.trim();
@@ -600,8 +624,12 @@ function addTracking() {
   const vwrlEur = vwrlType === 'units' && vwrlValue > 0 ? vwrlValue * vwrlPrice : vwrlValue;
   const vusaEur = vusaType === 'units' && vusaValue > 0 ? vusaValue * vusaPrice : vusaValue;
 
-  const now = new Date(); const dateStr = toLocalDateStr(now); const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
-  trackingData.push({ date: dateStr, time: timeStr, po: poValue, vwrl_base: vwrlEur, vusa_base: vusaEur, dispo: dispoValue, entry_timestamp: now.getTime() });
+  // Date/heure : reprend les champs du formulaire (modifiables) au lieu de forcer "maintenant" —
+  // permet de saisir correctement une session du soir/nuit enregistrée le lendemain
+  const dateStr = document.getElementById('entryDateInput').value || toLocalDateStr(new Date());
+  const timeStr = document.getElementById('entryTimeInput').value || new Date().toTimeString().split(' ')[0].substring(0, 5);
+  const entryTimestamp = parseEntryDateTime(dateStr, timeStr);
+  trackingData.push({ date: dateStr, time: timeStr, po: poValue, vwrl_base: vwrlEur, vusa_base: vusaEur, dispo: dispoValue, entry_timestamp: entryTimestamp });
 
   saveData();
   pushTrackingToGitHub();
@@ -609,6 +637,7 @@ function addTracking() {
   document.getElementById('vwrlInput').value = '';
   document.getElementById('vusaInput').value = '';
   document.getElementById('dispoInput').value = '';
+  resetEntryDateTime();
   showToast(`✓ Ajout du ${dateStr} ${timeStr}`);
   updateSoldes();
   updateTrackingTable();
@@ -1566,6 +1595,31 @@ function updateAllCharts() {
   updateNextTier();
 }
 
+function editEntryDate(entryTimestamp) {
+  const entry = trackingData.find(t => t.entry_timestamp === entryTimestamp);
+  if (!entry) { showToast('❌ Entrée introuvable'); return; }
+
+  const newDate = prompt('Nouvelle date (AAAA-MM-JJ) :', entry.date);
+  if (newDate === null) return; // annulé
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) { showToast('❌ Format de date invalide (AAAA-MM-JJ)'); return; }
+
+  const newTime = prompt('Nouvelle heure (HH:MM) :', entry.time || '21:00');
+  if (newTime === null) return; // annulé
+  if (!/^\d{2}:\d{2}$/.test(newTime)) { showToast('❌ Format d\'heure invalide (HH:MM)'); return; }
+
+  entry.date = newDate;
+  entry.time = newTime;
+  entry.entry_timestamp = parseEntryDateTime(newDate, newTime);
+
+  trackingData.sort((a, b) => new Date(a.date + ' ' + (a.time || '00:00')) - new Date(b.date + ' ' + (b.time || '00:00')));
+  saveData();
+  pushTrackingToGitHub();
+  updateSoldes();
+  updateTrackingTable();
+  updateAllCharts();
+  showToast(`✓ Date corrigée : ${newDate} ${newTime}`);
+}
+
 function updateTrackingTable() {
   const tbody = document.getElementById('trackingTable');
   const thead = document.getElementById('tableHead');
@@ -1592,7 +1646,7 @@ function updateTrackingTable() {
     const totalEtf = vwrlVal + vusaVal; const total = row.po + totalEtf;
     if (lastDate !== row.date) { if (lastDate !== null) html += '<tr style="height: 4px; background: #e0e0e0;"><td colspan="7"></td></tr>'; lastDate = row.date; }
     const timeStr = row.time || '—';
-    const rowData = { datetime: `${row.date} ${timeStr}`, po: row.po.toFixed(2), vwrl: vwrlVal.toFixed(2), vusa: vusaVal.toFixed(2), etf_total: totalEtf.toFixed(2), dispo: row.dispo.toFixed(2), total: total.toFixed(2) };
+    const rowData = { datetime: `${row.date} ${timeStr} <button class="secondary" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;" onclick="editEntryDate(${row.entry_timestamp})" title="Corriger la date/heure">✏️</button>`, po: row.po.toFixed(2), vwrl: vwrlVal.toFixed(2), vusa: vusaVal.toFixed(2), etf_total: totalEtf.toFixed(2), dispo: row.dispo.toFixed(2), total: total.toFixed(2) };
     let rowHtml = '<tr>'; columns.forEach(col => { if (col.visible) rowHtml += `<td>${rowData[col.id]}</td>`; }); rowHtml += '</tr>';
     html += rowHtml;
   });
@@ -1600,6 +1654,7 @@ function updateTrackingTable() {
 }
 
 loadData();
+resetEntryDateTime();
 updateChallengeCounter();
 setInterval(updateChallengeCounter, 1000);
 </script>
