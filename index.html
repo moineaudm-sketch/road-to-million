@@ -1092,49 +1092,52 @@ function generateRealProjection() {
   while (data.length < 2000) {
     const dayOfWeek = currentDate.getDay();
     const dateStr = toLocalDateStr(currentDate);
+    const isTradingDay = dayOfWeek !== 0 && dayOfWeek !== 6;
 
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      // Utiliser suivi réel si existe
-      if (trackingByDate[dateStr]) {
-        const t = trackingByDate[dateStr];
-        po = t.po;
-        vwrl = t.vwrl_base || 0;
-        vusa = t.vusa_base || 0;
-        cumulativeDeposits = vwrl + vusa; // redéfinit le capital de référence à chaque saisie réelle
-      } else if (new Date(dateStr) > new Date(lastEntry.date)) {
-        if (doubleCount === null) {
-          // Déterminer combien de paliers sont déjà dépassés par le solde réel actuel
-          doubleCount = 0;
-          while (po >= poInitial * Math.pow(2, doubleCount + 1)) doubleCount++;
-          nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
-        }
-
-        // Après dernier suivi : continuer sur le taux réel observé
-        po = po * (1 + continuationRate);
-        vwrl = vwrl * Math.pow(1 + VWRL_ANNUAL_RATE, 1 / 252);
-        vusa = vusa * Math.pow(1 + VUSA_ANNUAL_RATE, 1 / 252);
-
-        // Retrait à 50% du gain au franchissement d'un palier (identique à generateProjection)
-        if (po >= nextDoubleTarget) {
-          const previousTarget = poInitial * Math.pow(2, doubleCount);
-          const gain = po - previousTarget;
-          const retrait = gain * 0.5;
-          const toLivretA = retrait * 0.5;
-          const toETF = retrait * 0.5;
-          const toVWRL = toETF * 0.6;
-          const toVUSA = toETF * 0.4;
-
-          po -= retrait;
-          vwrl += toVWRL;
-          vusa += toVUSA;
-          livretA += toLivretA;
-          cumulativeDeposits += toVWRL + toVUSA; // nouvel apport en capital vers l'ETF (pas un gain de marché)
-          doubleCount += 1;
-          nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
-        }
+    // Une saisie réelle compte même un samedi/dimanche (ex: session vérifiée le week-end) : elle met
+    // à jour le solde de référence pour tous les jours, y compris le lundi suivant. Seule la
+    // continuation projetée (compounding) est réservée aux jours de trading.
+    if (trackingByDate[dateStr]) {
+      const t = trackingByDate[dateStr];
+      po = t.po;
+      vwrl = t.vwrl_base || 0;
+      vusa = t.vusa_base || 0;
+      cumulativeDeposits = vwrl + vusa; // redéfinit le capital de référence à chaque saisie réelle
+    } else if (isTradingDay && new Date(dateStr) > new Date(lastEntry.date)) {
+      if (doubleCount === null) {
+        // Déterminer combien de paliers sont déjà dépassés par le solde réel actuel
+        doubleCount = 0;
+        while (po >= poInitial * Math.pow(2, doubleCount + 1)) doubleCount++;
+        nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
       }
-      // Avant premier suivi : garder 300€
 
+      // Après dernier suivi : continuer sur le taux réel observé
+      po = po * (1 + continuationRate);
+      vwrl = vwrl * Math.pow(1 + VWRL_ANNUAL_RATE, 1 / 252);
+      vusa = vusa * Math.pow(1 + VUSA_ANNUAL_RATE, 1 / 252);
+
+      // Retrait à 50% du gain au franchissement d'un palier (identique à generateProjection)
+      if (po >= nextDoubleTarget) {
+        const previousTarget = poInitial * Math.pow(2, doubleCount);
+        const gain = po - previousTarget;
+        const retrait = gain * 0.5;
+        const toLivretA = retrait * 0.5;
+        const toETF = retrait * 0.5;
+        const toVWRL = toETF * 0.6;
+        const toVUSA = toETF * 0.4;
+
+        po -= retrait;
+        vwrl += toVWRL;
+        vusa += toVUSA;
+        livretA += toLivretA;
+        cumulativeDeposits += toVWRL + toVUSA; // nouvel apport en capital vers l'ETF (pas un gain de marché)
+        doubleCount += 1;
+        nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
+      }
+    }
+    // Avant premier suivi : garder 300€
+
+    if (isTradingDay) {
       const etfTotal = vwrl + vusa;
       const gains = Math.max(0, etfTotal - cumulativeDeposits);
       const taxes = gains * 0.45;
