@@ -71,8 +71,8 @@
     <div class="soldes-grid">
       <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">PO actuel</div><div class="solde-value" id="solde_po">—</div></div>
       <div class="solde-card" style="border-left-color: #999;"><div class="solde-label">Total retiré</div><div class="solde-value" id="solde_retired">—</div></div>
-      <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">VWRL</div><div class="solde-value" id="solde_vwrl">—</div></div>
-      <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">VUSA</div><div class="solde-value" id="solde_vusa">—</div></div>
+      <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">VWCE</div><div class="solde-value" id="solde_vwrl">—</div></div>
+      <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">VUSD</div><div class="solde-value" id="solde_vusa">—</div></div>
       <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Solde ETF</div><div class="solde-value" id="solde_etf">—</div></div>
       <div class="solde-card" style="border-left-color: #8b5cf6;"><div class="solde-label">Dispo</div><div class="solde-value" id="solde_dispo">—</div></div>
       <div class="solde-card" style="border-left-color: #000; font-weight: 600;"><div class="solde-label" style="font-weight: 600;">PO + ETF</div><div class="solde-value" id="solde_total">—</div></div>
@@ -108,13 +108,13 @@
         <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_po_worst">—</span></div>
       </div>
       <div class="solde-card" style="border-left-color: #1baf7a;">
-        <div class="solde-label">VWRL</div>
+        <div class="solde-label">VWCE</div>
         <div class="solde-value" id="evol_vwrl">—</div>
         <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem;">🟢 Meilleure : <span id="evol_vwrl_best">—</span></div>
         <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_vwrl_worst">—</span></div>
       </div>
       <div class="solde-card" style="border-left-color: #eb6834;">
-        <div class="solde-label">VUSA</div>
+        <div class="solde-label">VUSD</div>
         <div class="solde-value" id="evol_vusa">—</div>
         <div style="font-size: 10px; color: #15803d; margin-top: 0.35rem;">🟢 Meilleure : <span id="evol_vusa_best">—</span></div>
         <div style="font-size: 10px; color: #b91c1c;">🔴 Pire : <span id="evol_vusa_worst">—</span></div>
@@ -186,7 +186,7 @@
   </div>
 
   <div class="section">
-    <h2>Projection ETF (VWRL, VUSA, Total)</h2>
+    <h2>Projection ETF (VWCE, VUSD, Total)</h2>
     <div class="chart-container"><canvas id="chartETF"></canvas></div>
   </div>
 
@@ -336,8 +336,8 @@
     <h2>Suivi Portfolio</h2>
     <div style="margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px;">
       <label><input type="checkbox" id="col_po" checked onchange="updateTrackingTable()"> PO</label>
-      <label><input type="checkbox" id="col_vwrl" checked onchange="updateTrackingTable()"> VWRL</label>
-      <label><input type="checkbox" id="col_vusa" checked onchange="updateTrackingTable()"> VUSA</label>
+      <label><input type="checkbox" id="col_vwrl" checked onchange="updateTrackingTable()"> VWCE</label>
+      <label><input type="checkbox" id="col_vusa" checked onchange="updateTrackingTable()"> VUSD</label>
       <label><input type="checkbox" id="col_totaletf" checked onchange="updateTrackingTable()"> Total ETF</label>
       <label><input type="checkbox" id="col_dispo" checked onchange="updateTrackingTable()"> Dispo</label>
       <label><input type="checkbox" id="col_total" checked onchange="updateTrackingTable()"> Portefeuille</label>
@@ -350,8 +350,8 @@
     <details style="margin-bottom: 1rem;">
       <summary style="cursor: pointer; font-size: 12px; color: #666;">Prix unitaires (optionnel)</summary>
       <div style="padding: 0.75rem 0; display: flex; gap: 12px; flex-wrap: wrap;">
-        <label style="font-size: 12px;">VWRL (€) : <input type="number" id="vwrlPrice" placeholder="85.50" value="85.50" step="0.01" style="width: 80px;"></label>
-        <label style="font-size: 12px;">VUSA (€) : <input type="number" id="vusaPrice" placeholder="107.20" value="107.20" step="0.01" style="width: 80px;"></label>
+        <label style="font-size: 12px;">VWCE (€) : <input type="number" id="vwrlPrice" placeholder="85.50" value="85.50" step="0.01" style="width: 80px;"></label>
+        <label style="font-size: 12px;">VUSD (€) : <input type="number" id="vusaPrice" placeholder="107.20" value="107.20" step="0.01" style="width: 80px;"></label>
       </div>
     </details>
     <details style="margin-bottom: 1rem;">
@@ -374,8 +374,8 @@
     </div>
     <div style="font-size: 11px; color: #999; margin-bottom: 0.75rem;">Session du soir/nuit saisie le lendemain ? Change la date avant d'ajouter.</div>
     <div class="form-row"><label style="min-width: 80px;">PO Balance :</label><input type="number" id="poInput" placeholder="€" step="0.01"></div>
-    <div class="form-row"><label style="min-width: 80px;">VWRL :</label><input type="number" id="vwrlInput" placeholder="€ ou unités" step="0.01"><select id="vwrlType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
-    <div class="form-row"><label style="min-width: 80px;">VUSA :</label><input type="number" id="vusaInput" placeholder="€ ou unités" step="0.01"><select id="vusaType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
+    <div class="form-row"><label style="min-width: 80px;">VWCE :</label><input type="number" id="vwrlInput" placeholder="€ ou unités" step="0.01"><select id="vwrlType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
+    <div class="form-row"><label style="min-width: 80px;">VUSD :</label><input type="number" id="vusaInput" placeholder="€ ou unités" step="0.01"><select id="vusaType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
     <div class="form-row"><label style="min-width: 80px;">Dispo :</label><input type="number" id="dispoInput" placeholder="€" step="0.01"></div>
     <div class="controls">
       <button onclick="addTracking()">Ajouter</button>
@@ -620,8 +620,8 @@ function addTracking() {
 
   if (!po && !vwrl && !vusa && !dispo) { showToast('❌ Remplis au moins un champ'); return; }
   if (po && parseFloat(po) <= 0) { showToast('❌ PO doit être > 0'); return; }
-  if (vwrl && parseFloat(vwrl) <= 0) { showToast('❌ VWRL doit être > 0'); return; }
-  if (vusa && parseFloat(vusa) <= 0) { showToast('❌ VUSA doit être > 0'); return; }
+  if (vwrl && parseFloat(vwrl) <= 0) { showToast('❌ VWCE doit être > 0'); return; }
+  if (vusa && parseFloat(vusa) <= 0) { showToast('❌ VUSD doit être > 0'); return; }
 
   let poValue = po ? parseFloat(po) : null;
   let vwrlValue = vwrl ? parseFloat(vwrl) : null;
@@ -889,10 +889,10 @@ function updateAllocationChart() {
     { label: 'PO initial', value: poInitial, color: '#1e5ba8' },
     { label: 'PO (croissance)', value: poGrowth, color: '#6fa8e0' }
   ];
-  // VWRL et VUSA partagent la même teinte (vert), à deux nuances différentes
+  // VWCE et VUSD partagent la même teinte (vert), à deux nuances différentes
   const etfCategories = [
-    { label: 'VWRL (dont intérêts)', value: vwrlVal, color: '#1baf7a' },
-    { label: 'VUSA (dont intérêts)', value: vusaVal, color: '#7ee0bb' }
+    { label: 'VWCE (dont intérêts)', value: vwrlVal, color: '#1baf7a' },
+    { label: 'VUSD (dont intérêts)', value: vusaVal, color: '#7ee0bb' }
   ];
   const dispoCategory = { label: 'Dispo', value: last.dispo || 0, color: '#8b5cf6' };
 
@@ -1012,7 +1012,7 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
         const toLivretA = retrait * 0.5; // 50% vers Livret A
         const toETF = retrait * 0.5; // 50% vers ETF
 
-        // Split ETF: 60% VWRL, 40% VUSA (selon stratégie)
+        // Split ETF: 60% VWCE, 40% VUSD (selon stratégie)
         const toVWRL = toETF * 0.6;
         const toVUSA = toETF * 0.4;
 
@@ -1338,8 +1338,8 @@ function updateNextTier() {
     <div>Retrait (50% du gain): €${retrait.toFixed(0)}</div>
     <div>├ Dispo: €${toLivretA.toFixed(0)}</div>
     <div>└ ETF: €${toETF.toFixed(0)}</div>
-    <div style="margin-left: 1.2em;">├ VWRL (60%): €${toVWRL.toFixed(0)}</div>
-    <div style="margin-left: 1.2em;">└ VUSA (40%): €${toVUSA.toFixed(0)}</div>
+    <div style="margin-left: 1.2em;">├ VWCE (60%): €${toVWRL.toFixed(0)}</div>
+    <div style="margin-left: 1.2em;">└ VUSD (40%): €${toVUSA.toFixed(0)}</div>
   `;
 
   // Calculer ETAs pour atteindre le prochain palier
@@ -1705,19 +1705,19 @@ function updateAllCharts() {
   if (chartPO) chartPO.destroy();
   chartPO = new Chart(document.getElementById('chartPO').getContext('2d'), createChartConfig(labelsSlice, datasetsPO, maxY));
 
-  // Graphe ETF (VWRL, VUSA, Total)
+  // Graphe ETF (VWCE, VUSD, Total)
   const datasetsETF = [
-    { label: 'VWRL Pess (2.5%/an)', data: projPessSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
-    { label: 'VWRL Moyen (5.5%/an)', data: projMeanSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
-    { label: 'VWRL Opt (9%/an)', data: projOptSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
-    { label: 'VUSA Pess (5%/an)', data: projPessSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
-    { label: 'VUSA Moyen (9%/an)', data: projMeanSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
-    { label: 'VUSA Opt (13.5%/an)', data: projOptSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
+    { label: 'VWCE Pess (2.5%/an)', data: projPessSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
+    { label: 'VWCE Moyen (5.5%/an)', data: projMeanSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'VWCE Opt (9%/an)', data: projOptSlice.map(d => d.vwrl), borderColor: '#1baf7a', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
+    { label: 'VUSD Pess (5%/an)', data: projPessSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
+    { label: 'VUSD Moyen (9%/an)', data: projMeanSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 2, fill: false, tension: 0.1, pointRadius: 0 },
+    { label: 'VUSD Opt (13.5%/an)', data: projOptSlice.map(d => d.vusa), borderColor: '#eb6834', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
     { label: 'ETF Total Pess', data: projPessSlice.map(d => d.etf_total), borderColor: '#999', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [5, 5] },
     { label: 'ETF Total Moyen', data: projMeanSlice.map(d => d.etf_total), borderColor: '#000', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: 0 },
     { label: 'ETF Total Opt', data: projOptSlice.map(d => d.etf_total), borderColor: '#666', borderWidth: 1, fill: false, tension: 0.1, pointRadius: 0, borderDash: [2, 2] },
-    { label: 'VWRL Réel', data: trackDataVWRL, borderColor: '#1baf7a', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#1baf7a' },
-    { label: 'VUSA Réel', data: trackDataVUSA, borderColor: '#eb6834', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#eb6834' },
+    { label: 'VWCE Réel', data: trackDataVWRL, borderColor: '#1baf7a', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#1baf7a' },
+    { label: 'VUSD Réel', data: trackDataVUSA, borderColor: '#eb6834', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#eb6834' },
     { label: 'ETF Total Réel', data: trackDataETF, borderColor: '#e34948', borderWidth: 2.5, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#e34948' },
     { label: 'Capital net retiré (après impôts 45%)', data: trackDataNetWithdrawn, borderColor: '#7c3aed', borderWidth: 2, fill: false, tension: 0.1, pointRadius: trackPointRadius, pointBackgroundColor: '#7c3aed', borderDash: [3, 3] }
   ];
@@ -1773,8 +1773,8 @@ function updateTrackingTable() {
   const columns = [
     { id: 'datetime', label: 'Date & Heure', visible: true },
     { id: 'po', label: 'PO (€)', visible: document.getElementById('col_po').checked },
-    { id: 'vwrl', label: 'VWRL (€)', visible: document.getElementById('col_vwrl').checked },
-    { id: 'vusa', label: 'VUSA (€)', visible: document.getElementById('col_vusa').checked },
+    { id: 'vwrl', label: 'VWCE (€)', visible: document.getElementById('col_vwrl').checked },
+    { id: 'vusa', label: 'VUSD (€)', visible: document.getElementById('col_vusa').checked },
     { id: 'etf_total', label: 'Total ETF (€)', visible: document.getElementById('col_totaletf').checked },
     { id: 'dispo', label: 'Dispo (€)', visible: document.getElementById('col_dispo').checked },
     { id: 'total', label: 'Portefeuille (€)', visible: document.getElementById('col_total').checked }
