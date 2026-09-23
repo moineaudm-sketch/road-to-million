@@ -170,12 +170,12 @@
 
   <div class="section">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.5rem;">
-      <button class="secondary" id="weekPrevBtn" onclick="navigateWeek(1)" style="flex-shrink: 0;">◀ Préc.</button>
+      <button class="secondary" id="weekPrevBtn" onclick="navigateWeek(-1)" style="flex-shrink: 0;">◀ Préc.</button>
       <div style="text-align: center;">
         <h2 style="margin: 0;" id="weekChartTitle">Semaine 1</h2>
         <div style="font-size: 11px; color: #666;" id="weekChartRange">—</div>
       </div>
-      <button class="secondary" id="weekNextBtn" onclick="navigateWeek(-1)" style="flex-shrink: 0;">Suiv. ▶</button>
+      <button class="secondary" id="weekNextBtn" onclick="navigateWeek(1)" style="flex-shrink: 0;">Suiv. ▶</button>
     </div>
     <div class="chart-container"><canvas id="chartWeek"></canvas></div>
   </div>
@@ -422,7 +422,7 @@ const initialEntries = [
   { date: '2026-09-16', time: '21:00', po: 364.99, vwrl_base: 0, vusa_base: 0, dispo: 0, entry_timestamp: new Date(2026, 8, 16, 21, 0).getTime() }
 ];
 let chartPO = null; let chartETF = null; let chartTotal = null; let chartAllocation = null; let chartAllocationMillion = null; let chartWeek = null;
-let currentWeekIndex = 1; // 1 = la semaine qui se termine maintenant, 2 = la précédente, etc.
+let currentWeekIndex = null; // numéro absolu depuis le début du projet ; initialisé à la semaine en cours au premier rendu
 
 function setSyncStatus(msg, cls) {
   const el = document.getElementById('syncStatus');
@@ -1559,7 +1559,8 @@ function createWeekChartConfig(labels, data, yMin, yMax) {
   };
 }
 
-// Semaine 1 = celle qui se termine maintenant ; on ne remonte pas avant la semaine de START_DATE
+// Numérotation absolue depuis le début du projet : semaine 1 = semaine de START_DATE, le numéro
+// augmente avec le temps (ex: semaine 3 = semaine en cours si 2 semaines complètes se sont écoulées).
 function getMaxWeekIndex() {
   const currentMonday = getMondayOfWeek(new Date());
   const startMonday = getMondayOfWeek(START_DATE);
@@ -1568,9 +1569,9 @@ function getMaxWeekIndex() {
 
 function navigateWeek(delta) {
   let newIndex = currentWeekIndex + delta;
-  if (newIndex < 1) newIndex = 1; // pas de semaine future au-delà de la semaine en cours
+  if (newIndex < 1) newIndex = 1; // pas avant le début du projet
   const maxWeekIndex = getMaxWeekIndex();
-  if (newIndex > maxWeekIndex) newIndex = maxWeekIndex; // pas avant le début du projet
+  if (newIndex > maxWeekIndex) newIndex = maxWeekIndex; // pas de semaine future au-delà de la semaine en cours
   currentWeekIndex = newIndex;
   updateWeekChart();
 }
@@ -1579,9 +1580,11 @@ function updateWeekChart() {
   const canvas = document.getElementById('chartWeek');
   if (!canvas) return;
 
-  const currentMonday = getMondayOfWeek(new Date());
-  const weekMonday = new Date(currentMonday);
-  weekMonday.setDate(weekMonday.getDate() - (currentWeekIndex - 1) * 7);
+  if (currentWeekIndex === null) currentWeekIndex = getMaxWeekIndex(); // par défaut : la semaine en cours
+
+  const startMonday = getMondayOfWeek(START_DATE);
+  const weekMonday = new Date(startMonday);
+  weekMonday.setDate(weekMonday.getDate() + (currentWeekIndex - 1) * 7);
 
   // Vendredi précédent → Lun Mar Mer Jeu Ven de la semaine → Lundi suivant (repères avant/après la semaine de trading)
   const offsets = [-3, 0, 1, 2, 3, 4, 7];
@@ -1622,9 +1625,9 @@ function updateWeekChart() {
     document.getElementById('weekChartRange').textContent = '—';
   }
 
-  // Désactiver "Suivant" à la semaine en cours (pas de semaine future), et "Précédent" avant le début du projet
-  document.getElementById('weekNextBtn').disabled = currentWeekIndex <= 1;
-  document.getElementById('weekPrevBtn').disabled = currentWeekIndex >= getMaxWeekIndex();
+  // Désactiver "Précédent" avant le début du projet, et "Suivant" à la semaine en cours (pas de semaine future)
+  document.getElementById('weekPrevBtn').disabled = currentWeekIndex <= 1;
+  document.getElementById('weekNextBtn').disabled = currentWeekIndex >= getMaxWeekIndex();
 }
 
 function updateAllCharts() {
