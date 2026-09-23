@@ -1516,7 +1516,7 @@ function getMondayOfWeek(date) {
   return d;
 }
 
-function createWeekChartConfig(labels, data, yMin, yMax) {
+function createWeekChartConfig(labels, data, yMin, yMax, pointRadius) {
   return {
     type: 'line',
     data: {
@@ -1529,7 +1529,7 @@ function createWeekChartConfig(labels, data, yMin, yMax) {
         borderWidth: 2.5,
         fill: true,
         tension: 0.15,
-        pointRadius: 4,
+        pointRadius: pointRadius || 4,
         pointBackgroundColor: '#e34948',
         spanGaps: true
       }]
@@ -1597,10 +1597,20 @@ function updateWeekChart() {
   const poByDate = {};
   if (projReal) projReal.forEach(d => { poByDate[d.date] = d.po; });
 
+  // Au-delà de la dernière saisie réelle, pas de projection sur ce graphe : ligne plate au dernier
+  // niveau connu (pas la tendance projetée, qui peut être trompeuse sur une seule semaine)
+  const lastEntry = trackingData.length > 0 ? trackingData[trackingData.length - 1] : null;
+
   const labels = validDates.map(formatWeekLabel);
   const data = validDates.map(d => {
-    const v = poByDate[toLocalDateStr(d)];
+    const dateStr = toLocalDateStr(d);
+    if (lastEntry && dateStr > lastEntry.date) return lastEntry.po;
+    const v = poByDate[dateStr];
     return v === undefined ? null : v;
+  });
+  const pointRadius = validDates.map(d => {
+    const dateStr = toLocalDateStr(d);
+    return (lastEntry && dateStr > lastEntry.date) ? 0 : 4;
   });
 
   const validValues = data.filter(v => v !== null);
@@ -1615,7 +1625,7 @@ function updateWeekChart() {
   }
 
   if (chartWeek) chartWeek.destroy();
-  chartWeek = new Chart(canvas.getContext('2d'), createWeekChartConfig(labels, data, yMin, yMax));
+  chartWeek = new Chart(canvas.getContext('2d'), createWeekChartConfig(labels, data, yMin, yMax, pointRadius));
 
   document.getElementById('weekChartTitle').textContent = `Semaine ${currentWeekIndex}`;
   if (validDates.length > 0) {
