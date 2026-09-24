@@ -1424,13 +1424,10 @@ function updateNextTier() {
   document.getElementById('eta_next_mean').textContent = etaFromDailyRate(rateMean);
   document.getElementById('eta_next_opt').textContent = etaFromDailyRate(rateOpt);
 
-  // "Réel" : la continuation de generateRealProjection() part déjà du vrai solde actuel (via
-  // l'historique tracké), donc pas besoin de la reformule directe — on cherche juste à partir
-  // d'aujourd'hui pour éviter de retomber sur un jour passé où le solde avait dépassé la cible.
-  const projReal = generateRealProjection();
-  const todayStr = toLocalDateStr(new Date());
-  const foundReal = projReal ? projReal.find(d => d.date >= todayStr && d.po >= nextTarget) : null;
-  document.getElementById('eta_next_real').textContent = foundReal ? foundReal.date : '+2000j';
+  // "Réel" : le rythme empirique constaté depuis le début de la reprise (même taux que "Opt",
+  // sans le diviser) — pas la moyenne sur tout l'historique crash+reprise, qui reste toujours
+  // fortement négative et bloquait l'ETA sur "+2000j" quel que soit l'état de la remontée en cours.
+  document.getElementById('eta_next_real').textContent = etaFromDailyRate(rateOpt);
 }
 
 function decimateToWeekly(projection) {
