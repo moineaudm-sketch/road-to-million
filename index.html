@@ -1362,26 +1362,40 @@ function updateNextTier() {
     <div style="margin-left: 1.2em;">└ VUSD (40%): €${toVUSA.toFixed(0)}</div>
   `;
 
-  // Calculer ETAs pour atteindre le prochain palier
-  const daysOfTrading = 2000;
-  const projPess = generateProjection(daysOfTrading, 0.008, 0.025, 0.05);
-  const projMean = generateProjection(daysOfTrading, 0.010, 0.055, 0.09);
-  const projOpt = generateProjection(daysOfTrading, 0.012, 0.09, 0.135);
-  const projReal = generateRealProjection();
-
-  // Ne chercher qu'à partir d'aujourd'hui : sinon un palier bas (déjà dépassé par le passé,
-  // avant un gros drawdown par exemple) donnerait une ETA dans le passé.
-  const todayStr = toLocalDateStr(new Date());
-  const findETADate = (projection, target) => {
-    if (!projection) return '—';
-    const found = projection.find(d => d.date >= todayStr && d.total >= target);
-    return found ? found.date : '+2000j';
+  // Calculer ETAs pour atteindre le prochain palier : projection directe depuis le VRAI solde PO
+  // actuel (currentPO), pas depuis les 307€ de départ théorique du 11/09 utilisés par
+  // generateProjection() pour les graphiques principaux. Sinon, après un gros drawdown, la cible
+  // d'un petit palier de reprise est déjà dépassée dès le jour 1 de cette simulation-là, ce qui
+  // donnait une ETA "aujourd'hui" au lieu d'une vraie date future réaliste.
+  const addTradingDays = (startDate, tradingDays) => {
+    const d = new Date(startDate);
+    let count = 0;
+    while (count < tradingDays) {
+      d.setDate(d.getDate() + 1);
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) count++;
+    }
+    return d;
   };
 
-  document.getElementById('eta_next_pess').textContent = findETADate(projPess, nextTarget);
-  document.getElementById('eta_next_mean').textContent = findETADate(projMean, nextTarget);
-  document.getElementById('eta_next_opt').textContent = findETADate(projOpt, nextTarget);
-  document.getElementById('eta_next_real').textContent = findETADate(projReal, nextTarget);
+  const etaFromDailyRate = (dailyRate) => {
+    if (currentPO <= 0 || currentPO >= nextTarget || dailyRate <= 0) return '+2000j';
+    const tradingDaysNeeded = Math.ceil(Math.log(nextTarget / currentPO) / Math.log(1 + dailyRate));
+    if (!isFinite(tradingDaysNeeded) || tradingDaysNeeded > 2000) return '+2000j';
+    return toLocalDateStr(addTradingDays(new Date(), tradingDaysNeeded));
+  };
+
+  document.getElementById('eta_next_pess').textContent = etaFromDailyRate(0.008);
+  document.getElementById('eta_next_mean').textContent = etaFromDailyRate(0.010);
+  document.getElementById('eta_next_opt').textContent = etaFromDailyRate(0.012);
+
+  // "Réel" : la continuation de generateRealProjection() part déjà du vrai solde actuel (via
+  // l'historique tracké), donc pas besoin de la reformule directe — on cherche juste à partir
+  // d'aujourd'hui pour éviter de retomber sur un jour passé où le solde avait dépassé la cible.
+  const projReal = generateRealProjection();
+  const todayStr = toLocalDateStr(new Date());
+  const foundReal = projReal ? projReal.find(d => d.date >= todayStr && d.po >= nextTarget) : null;
+  document.getElementById('eta_next_real').textContent = foundReal ? foundReal.date : '+2000j';
 }
 
 function decimateToWeekly(projection) {
