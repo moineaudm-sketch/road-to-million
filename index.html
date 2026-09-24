@@ -150,28 +150,29 @@
     <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
       <label style="font-size: 12px;">Palier :
         <select id="tierSelect" onchange="updateAllCharts()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px;">
-          <option value="1">Palier 1 (133€ → 267€)</option>
-          <option value="2">Palier 2 (200€ → 400€)</option>
-          <option value="3">Palier 3 (300€ → 600€)</option>
-          <option value="4">Palier 4 (450€ → 900€)</option>
-          <option value="5">Palier 5 (675€ → 1,350€)</option>
-          <option value="6">Palier 6 (1,012€ → 2,025€)</option>
-          <option value="7">Palier 7 (1,519€ → 3,038€)</option>
-          <option value="8">Palier 8 (2,278€ → 4,556€)</option>
-          <option value="9">Palier 9 (3,417€ → 6,834€)</option>
-          <option value="10">Palier 10 (5,126€ → 10,252€)</option>
-          <option value="11">Palier 11 (7,689€ → 15,377€)</option>
-          <option value="12">Palier 12 (11,533€ → 23,066€)</option>
-          <option value="13">Palier 13 (17,300€ → 34,599€)</option>
-          <option value="14">Palier 14 (25,949€ → 51,899€)</option>
-          <option value="15">Palier 15 (38,924€ → 77,848€)</option>
-          <option value="16">Palier 16 (58,386€ → 116,772€)</option>
-          <option value="17">Palier 17 (87,579€ → 175,158€)</option>
-          <option value="18">Palier 18 (131,368€ → 262,736€)</option>
-          <option value="19">Palier 19 (197,052€ → 394,105€)</option>
-          <option value="20">Palier 20 (295,578€ → 591,157€)</option>
-          <option value="21">Palier 21 (443,368€ → 886,735€)</option>
-          <option value="22">Palier 22 (665,051€ → 1,330,103€)</option>
+          <option value="1">Palier 1 (89€ → 178€)</option>
+          <option value="2">Palier 2 (133€ → 267€)</option>
+          <option value="3">Palier 3 (200€ → 400€)</option>
+          <option value="4">Palier 4 (300€ → 600€)</option>
+          <option value="5">Palier 5 (450€ → 900€)</option>
+          <option value="6">Palier 6 (675€ → 1,350€)</option>
+          <option value="7">Palier 7 (1,013€ → 2,025€)</option>
+          <option value="8">Palier 8 (1,519€ → 3,038€)</option>
+          <option value="9">Palier 9 (2,278€ → 4,556€)</option>
+          <option value="10">Palier 10 (3,417€ → 6,834€)</option>
+          <option value="11">Palier 11 (5,126€ → 10,252€)</option>
+          <option value="12">Palier 12 (7,689€ → 15,377€)</option>
+          <option value="13">Palier 13 (11,533€ → 23,066€)</option>
+          <option value="14">Palier 14 (17,300€ → 34,599€)</option>
+          <option value="15">Palier 15 (25,949€ → 51,899€)</option>
+          <option value="16">Palier 16 (38,924€ → 77,848€)</option>
+          <option value="17">Palier 17 (58,386€ → 116,772€)</option>
+          <option value="18">Palier 18 (87,579€ → 175,158€)</option>
+          <option value="19">Palier 19 (131,368€ → 262,736€)</option>
+          <option value="20">Palier 20 (197,052€ → 394,105€)</option>
+          <option value="21">Palier 21 (295,578€ → 591,157€)</option>
+          <option value="22">Palier 22 (443,368€ → 886,735€)</option>
+          <option value="23">Palier 23 (665,051€ → 1,330,103€)</option>
         </select>
       </label>
     </div>
@@ -425,8 +426,8 @@ function updateChallengeCounter() {
 const VWRL_ANNUAL_RATE = 0.055; const VUSA_ANNUAL_RATE = 0.09; const VWRL_PRICE = 85.50; const VUSA_PRICE = 107.20; const START_DATE = new Date(2026, 8, 11); const TARGET = 1000000;
 // Base des paliers de retrait : chaque palier double son propre solde retenu (pas un point fixe),
 // donc le solde après retrait = 1.5x le solde de référence du palier précédent. Calibré pour que le
-// palier 3 reste 300€ → 600€ (retrait 150€), avec 2 paliers de reprise ajoutés en dessous.
-const TIER_BASE = 1200 / 9; // ≈ 133,33€
+// palier 4 reste 300€ → 600€ (retrait 150€), avec 3 paliers de reprise ajoutés en dessous.
+const TIER_BASE = 800 / 9; // ≈ 88,89€
 let trackingData = [];
 // Dernier recours seulement (ni distant ni cache local disponibles) — reflète les vraies premières saisies
 const initialEntries = [
