@@ -1369,9 +1369,12 @@ function updateNextTier() {
   const projOpt = generateProjection(daysOfTrading, 0.012, 0.09, 0.135);
   const projReal = generateRealProjection();
 
+  // Ne chercher qu'à partir d'aujourd'hui : sinon un palier bas (déjà dépassé par le passé,
+  // avant un gros drawdown par exemple) donnerait une ETA dans le passé.
+  const todayStr = toLocalDateStr(new Date());
   const findETADate = (projection, target) => {
     if (!projection) return '—';
-    const found = projection.find(d => d.total >= target);
+    const found = projection.find(d => d.date >= todayStr && d.total >= target);
     return found ? found.date : '+2000j';
   };
 
