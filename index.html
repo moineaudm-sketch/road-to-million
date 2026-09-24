@@ -1077,6 +1077,25 @@ function computeObservedDailyRate() {
   return Math.pow(last.po / first.po, 1 / daysBetween) - 1;
 }
 
+function getRecoveryStartEntry() {
+  // Repère le début de la phase de reprise en cours : le premier jour où le solde a chuté de
+  // plus de 50% par rapport au jour précédent (le crash). À défaut de crash détecté, le tout
+  // premier jour de l'historique.
+  const lastByDate = {};
+  trackingData.forEach(t => { lastByDate[t.date] = t; });
+  const days = Object.keys(lastByDate).sort();
+  if (days.length < 1) return null;
+
+  let startIdx = 0;
+  for (let i = 1; i < days.length; i++) {
+    const prevPo = lastByDate[days[i - 1]].po;
+    const po = lastByDate[days[i]].po;
+    if (prevPo > 0 && po < prevPo * 0.5) { startIdx = i; break; }
+  }
+
+  return lastByDate[days[startIdx]];
+}
+
 function computeRecoveryDailyRate() {
   // Taux composé quotidien observé depuis le début de la phase de reprise en cours (le crash),
   // pas depuis tout l'historique — computeObservedDailyRate() moyenne crash + reprise et reste
@@ -1086,16 +1105,7 @@ function computeRecoveryDailyRate() {
   const days = Object.keys(lastByDate).sort();
   if (days.length < 2) return null;
 
-  // Repérer le début du crash : le premier jour où le solde a chuté de plus de 50% par rapport
-  // au jour précédent. À défaut de crash détecté, prendre tout l'historique disponible.
-  let startIdx = 0;
-  for (let i = 1; i < days.length; i++) {
-    const prevPo = lastByDate[days[i - 1]].po;
-    const po = lastByDate[days[i]].po;
-    if (prevPo > 0 && po < prevPo * 0.5) { startIdx = i; break; }
-  }
-
-  const start = lastByDate[days[startIdx]];
+  const start = getRecoveryStartEntry();
   const last = lastByDate[days[days.length - 1]];
   const daysBetween = Math.floor((new Date(last.date) - new Date(start.date)) / (1000 * 60 * 60 * 24));
   if (daysBetween < 1 || start.po <= 0) return null;
@@ -1374,10 +1384,17 @@ function updateNextTier() {
 
   // Afficher info
   document.getElementById('nextTierLabel').textContent = `Palier ${tierToUnlock} (€${currentTarget.toFixed(0)} → €${nextTarget.toFixed(0)})`;
-  document.getElementById('nextTierRange').textContent = `Progression: €${currentPO.toFixed(0)} / €${nextTarget.toFixed(0)} (${((currentPO - currentTarget) / (nextTarget - currentTarget) * 100).toFixed(1)}%) — Gain: €${gain.toFixed(0)}`;
+
+  // Base de la barre de progression : si le solde n'a pas encore atteint le seuil théorique du
+  // palier (currentTarget), ce seuil n'a pas de sens comme point de départ (donnerait un % négatif
+  // pendant toute la reprise). On part alors du point bas du crash à la place.
+  const recoveryStart = getRecoveryStartEntry();
+  const progressBase = (currentPO < currentTarget && recoveryStart) ? Math.min(recoveryStart.po, currentPO) : currentTarget;
+
+  document.getElementById('nextTierRange').textContent = `Progression: €${currentPO.toFixed(0)} / €${nextTarget.toFixed(0)} (${((currentPO - progressBase) / (nextTarget - progressBase) * 100).toFixed(1)}%) — Gain: €${gain.toFixed(0)}`;
 
   // Mise à jour % et barre
-  const tierPct = Math.min((currentPO - currentTarget) / (nextTarget - currentTarget) * 100, 100);
+  const tierPct = Math.min(Math.max((currentPO - progressBase) / (nextTarget - progressBase) * 100, 0), 100);
   document.getElementById('nextTier_pct').textContent = `${tierPct.toFixed(1)}%`;
   document.getElementById('nextTier_bar').style.width = `${tierPct}%`;
   document.getElementById('nextTierSplit').innerHTML = `
