@@ -150,18 +150,28 @@
     <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
       <label style="font-size: 12px;">Palier :
         <select id="tierSelect" onchange="updateAllCharts()" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px;">
-          <option value="1">Palier 1 (300€ → 600€)</option>
-          <option value="2">Palier 2 (600€ → 1,200€)</option>
-          <option value="3">Palier 3 (1,200€ → 2,400€)</option>
-          <option value="4">Palier 4 (2,400€ → 4,800€)</option>
-          <option value="5">Palier 5 (4,800€ → 9,600€)</option>
-          <option value="6">Palier 6 (9,600€ → 19,200€)</option>
-          <option value="7">Palier 7 (19,200€ → 38,400€)</option>
-          <option value="8">Palier 8 (38,400€ → 76,800€)</option>
-          <option value="9">Palier 9 (76,800€ → 153,600€)</option>
-          <option value="10">Palier 10 (153,600€ → 307,200€)</option>
-          <option value="11">Palier 11 (307,200€ → 614,400€)</option>
-          <option value="12">Palier 12 (614,400€ → 1,228,800€)</option>
+          <option value="1">Palier 1 (133€ → 267€)</option>
+          <option value="2">Palier 2 (200€ → 400€)</option>
+          <option value="3">Palier 3 (300€ → 600€)</option>
+          <option value="4">Palier 4 (450€ → 900€)</option>
+          <option value="5">Palier 5 (675€ → 1,350€)</option>
+          <option value="6">Palier 6 (1,012€ → 2,025€)</option>
+          <option value="7">Palier 7 (1,519€ → 3,038€)</option>
+          <option value="8">Palier 8 (2,278€ → 4,556€)</option>
+          <option value="9">Palier 9 (3,417€ → 6,834€)</option>
+          <option value="10">Palier 10 (5,126€ → 10,252€)</option>
+          <option value="11">Palier 11 (7,689€ → 15,377€)</option>
+          <option value="12">Palier 12 (11,533€ → 23,066€)</option>
+          <option value="13">Palier 13 (17,300€ → 34,599€)</option>
+          <option value="14">Palier 14 (25,949€ → 51,899€)</option>
+          <option value="15">Palier 15 (38,924€ → 77,848€)</option>
+          <option value="16">Palier 16 (58,386€ → 116,772€)</option>
+          <option value="17">Palier 17 (87,579€ → 175,158€)</option>
+          <option value="18">Palier 18 (131,368€ → 262,736€)</option>
+          <option value="19">Palier 19 (197,052€ → 394,105€)</option>
+          <option value="20">Palier 20 (295,578€ → 591,157€)</option>
+          <option value="21">Palier 21 (443,368€ → 886,735€)</option>
+          <option value="22">Palier 22 (665,051€ → 1,330,103€)</option>
         </select>
       </label>
     </div>
@@ -413,6 +423,10 @@ function updateChallengeCounter() {
 }
 
 const VWRL_ANNUAL_RATE = 0.055; const VUSA_ANNUAL_RATE = 0.09; const VWRL_PRICE = 85.50; const VUSA_PRICE = 107.20; const START_DATE = new Date(2026, 8, 11); const TARGET = 1000000;
+// Base des paliers de retrait : chaque palier double son propre solde retenu (pas un point fixe),
+// donc le solde après retrait = 1.5x le solde de référence du palier précédent. Calibré pour que le
+// palier 3 reste 300€ → 600€ (retrait 150€), avec 2 paliers de reprise ajoutés en dessous.
+const TIER_BASE = 1200 / 9; // ≈ 133,33€
 let trackingData = [];
 // Dernier recours seulement (ni distant ni cache local disponibles) — reflète les vraies premières saisies
 const initialEntries = [
@@ -991,7 +1005,13 @@ function updateSoldes() {
 }
 
 function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnualRate) {
-  const data = []; let po = 307; let vwrl = 0; let vusa = 0; let livretA = 0; let poInitial = 307; let nextDoubleTarget = poInitial * 2; let doubleCount = 0;
+  const data = []; let po = 307; let vwrl = 0; let vusa = 0; let livretA = 0;
+
+  // Chaque palier double son propre solde de référence réellement retenu après le retrait précédent
+  // (pas un point fixe) — voir TIER_BASE. Initialisé au palier où se trouve le po de départ.
+  let tierRefBalance = TIER_BASE;
+  while (po >= tierRefBalance * 2) tierRefBalance *= 1.5;
+  let nextDoubleTarget = tierRefBalance * 2;
 
   let currentDate = new Date(START_DATE); let tradingDaysCount = 0;
 
@@ -1006,8 +1026,7 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
 
       // Check for doubling and retrait logic
       if (po >= nextDoubleTarget) {
-        const previousTarget = poInitial * Math.pow(2, doubleCount);
-        const gain = po - previousTarget;
+        const gain = po - tierRefBalance;
         const retrait = gain * 0.5; // Retirer 50% du gain
         const toLivretA = retrait * 0.5; // 50% vers Livret A
         const toETF = retrait * 0.5; // 50% vers ETF
@@ -1020,8 +1039,8 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
         vwrl += toVWRL;
         vusa += toVUSA;
         livretA += toLivretA;
-        doubleCount += 1;
-        nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
+        tierRefBalance = po; // le nouveau point de référence = solde réel après retrait
+        nextDoubleTarget = tierRefBalance * 2;
       }
 
       data.push({
@@ -1083,10 +1102,10 @@ function generateRealProjection() {
   // comptent comme gain imposable à 45%.
   let cumulativeDeposits = 0;
 
-  // Politique de retrait aux paliers de doublement (même règle que "Prochain Palier" : base 300€) —
-  // initialisée seulement quand la continuation démarre, à partir du solde réel atteint
-  const poInitial = 300;
-  let doubleCount = null;
+  // Politique de retrait aux paliers de doublement (même règle que "Prochain Palier") : chaque palier
+  // double son propre solde de référence réellement retenu après le retrait précédent (pas un point
+  // fixe) — initialisée seulement quand la continuation démarre, à partir du solde réel atteint
+  let tierRefBalance = null;
   let nextDoubleTarget = null;
 
   while (data.length < 2000) {
@@ -1104,11 +1123,11 @@ function generateRealProjection() {
       vusa = t.vusa_base || 0;
       cumulativeDeposits = vwrl + vusa; // redéfinit le capital de référence à chaque saisie réelle
     } else if (isTradingDay && new Date(dateStr) > new Date(lastEntry.date)) {
-      if (doubleCount === null) {
-        // Déterminer combien de paliers sont déjà dépassés par le solde réel actuel
-        doubleCount = 0;
-        while (po >= poInitial * Math.pow(2, doubleCount + 1)) doubleCount++;
-        nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
+      if (tierRefBalance === null) {
+        // Déterminer le solde de référence du palier en cours à partir du solde réel actuel
+        tierRefBalance = TIER_BASE;
+        while (po >= tierRefBalance * 2) tierRefBalance *= 1.5;
+        nextDoubleTarget = tierRefBalance * 2;
       }
 
       // Après dernier suivi : continuer sur le taux réel observé
@@ -1116,10 +1135,10 @@ function generateRealProjection() {
       vwrl = vwrl * Math.pow(1 + VWRL_ANNUAL_RATE, 1 / 252);
       vusa = vusa * Math.pow(1 + VUSA_ANNUAL_RATE, 1 / 252);
 
-      // Retrait à 50% du gain au franchissement d'un palier (identique à generateProjection)
+      // Retrait à 50% du gain au franchissement d'un palier : on double le solde réellement retenu
+      // après le retrait précédent, pas un point fixe (identique à generateProjection)
       if (po >= nextDoubleTarget) {
-        const previousTarget = poInitial * Math.pow(2, doubleCount);
-        const gain = po - previousTarget;
+        const gain = po - tierRefBalance;
         const retrait = gain * 0.5;
         const toLivretA = retrait * 0.5;
         const toETF = retrait * 0.5;
@@ -1131,8 +1150,8 @@ function generateRealProjection() {
         vusa += toVUSA;
         livretA += toLivretA;
         cumulativeDeposits += toVWRL + toVUSA; // nouvel apport en capital vers l'ETF (pas un gain de marché)
-        doubleCount += 1;
-        nextDoubleTarget = poInitial * Math.pow(2, doubleCount + 1);
+        tierRefBalance = po; // le nouveau point de référence = solde réel après retrait
+        nextDoubleTarget = tierRefBalance * 2;
       }
     }
     // Avant premier suivi : garder 300€
@@ -1305,21 +1324,18 @@ function updateNextTier() {
 
   const last = trackingData[trackingData.length - 1];
   const currentPO = last.po;
-  const poInitial = 300;
 
-  // Trouver quel palier est actuellement en cours de déblocage
+  // Trouver quel palier est actuellement en cours de déblocage : chaque palier double son propre
+  // solde de référence réellement retenu après le retrait précédent (pas un point fixe)
   let tierToUnlock = 1;
-  for (let t = 1; t <= 12; t++) {
-    const tierTarget = poInitial * Math.pow(2, t);
-    if (currentPO >= tierTarget) {
-      tierToUnlock = t + 1; // Le suivant
-    } else {
-      break;
-    }
+  let tierRefBalance = TIER_BASE;
+  while (currentPO >= tierRefBalance * 2) {
+    tierRefBalance *= 1.5;
+    tierToUnlock += 1;
   }
 
-  const currentTarget = poInitial * Math.pow(2, tierToUnlock - 1);
-  const nextTarget = poInitial * Math.pow(2, tierToUnlock);
+  const currentTarget = tierRefBalance;
+  const nextTarget = tierRefBalance * 2;
 
   // Retrait attendu = 50% du gain
   const gain = nextTarget - currentTarget;
@@ -1386,8 +1402,8 @@ function calculateTiers(projection) {
 
   const tiers = [];
   let tier = 0;
-  let poInitial = 300;
-  let nextDoubleTarget = poInitial * 2;
+  let tierRefBalance = TIER_BASE;
+  let nextDoubleTarget = tierRefBalance * 2;
 
   for (let i = 0; i < projection.length; i++) {
     if (projection[i].po >= nextDoubleTarget) {
@@ -1398,7 +1414,8 @@ function calculateTiers(projection) {
         doubledAmount: nextDoubleTarget
       });
       tier += 1;
-      nextDoubleTarget = poInitial * Math.pow(2, tier + 1);
+      tierRefBalance *= 1.5;
+      nextDoubleTarget = tierRefBalance * 2;
 
       if (nextDoubleTarget > TARGET) break; // Arrêter si on dépasse 1M
     }
