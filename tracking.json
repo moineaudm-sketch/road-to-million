@@ -144,12 +144,12 @@
     "entry_timestamp": 1790255340000
   },
   {
-    "date": "2026-09-25",
-    "time": "09:00",
-    "po": 18.07,
-    "vwrl_base": 24.16,
-    "vusa_base": 36.41,
+    "date": "2026-09-24",
+    "time": "16:16",
+    "po": 19.67,
+    "vwrl_base": 24.3,
+    "vusa_base": 36.43,
     "dispo": 0,
-    "entry_timestamp": 1790319600000
+    "entry_timestamp": 1790259360000
   }
 ]
