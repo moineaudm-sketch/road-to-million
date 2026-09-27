@@ -1118,7 +1118,9 @@ function generateRealProjection() {
   if (trackingData.length === 0) return null;
 
   const lastEntry = trackingData[trackingData.length - 1];
-  const observedDailyRate = computeObservedDailyRate();
+  // Continuation sur le taux de la reprise en cours (depuis le point bas du crash), pas la moyenne
+  // sur tout l'historique crash+reprise qui resterait fortement négative en permanence.
+  const observedDailyRate = computeRecoveryDailyRate();
   const continuationRate = observedDailyRate !== null ? observedDailyRate : 0.010; // repli sur la moyenne si historique trop court (< 2 jours)
 
   // Créer map de suivi réel
@@ -1738,12 +1740,14 @@ function updateAllCharts() {
   const projRealRaw = generateRealProjection();
   const projReal = projRealRaw ? decimateToWeekly(projRealRaw) : null;
 
-  // Info transparence : taux réel observé vs taux utilisé pour la continuation projetée
-  const observedRate = computeObservedDailyRate();
+  // Info transparence : taux réel observé depuis le début de la reprise (le point bas du crash),
+  // pas depuis tout l'historique crash+reprise — c'est aussi ce taux qui alimente la continuation
+  // projetée dans generateRealProjection().
+  const observedRate = computeRecoveryDailyRate();
   const realRateEl = document.getElementById('realRateInfo');
   if (realRateEl) {
     realRateEl.textContent = observedRate !== null
-      ? `${(observedRate * 100).toFixed(2)}%/j sur l'historique — la projection continue sur ce même taux après la dernière saisie`
+      ? `${(observedRate * 100).toFixed(2)}%/j depuis le début de la reprise — la projection continue sur ce même taux après la dernière saisie`
       : '—';
   }
 
