@@ -225,6 +225,15 @@
     "entry_timestamp": 1790690940000
   },
   {
+    "date": "2026-09-29",
+    "time": "17:21",
+    "po": 36.12,
+    "vwrl_base": 24.49,
+    "vusa_base": 36.86,
+    "dispo": 0,
+    "entry_timestamp": 1790695260000
+  },
+  {
     "date": "2026-09-30",
     "time": "15:49",
     "po": 28.28,
@@ -315,12 +324,12 @@
     "entry_timestamp": 1790921040000
   },
   {
-    "date": "2026-09-29",
-    "time": "17:21",
-    "po": 36.12,
-    "vwrl_base": 24.49,
-    "vusa_base": 36.86,
+    "date": "2026-10-02",
+    "time": "14:15",
+    "po": 37,
+    "vwrl_base": 24.47,
+    "vusa_base": 36.88,
     "dispo": 0,
-    "entry_timestamp": 1790695260000
+    "entry_timestamp": 1790943300000
   }
 ]
