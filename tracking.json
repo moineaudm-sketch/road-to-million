@@ -613,110 +613,11 @@
   },
   {
     "date": "2026-10-15",
-    "time": "12:02",
-    "po": 28.24,
-    "vwrl_base": 43.45,
-    "vusa_base": 66.55,
+    "time": "11:36",
+    "po": 18.66,
+    "vwrl_base": 43.43,
+    "vusa_base": 66.42,
     "dispo": 0,
-    "entry_timestamp": 1792058520000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:03",
-    "po": 29.16,
-    "vwrl_base": 43.45,
-    "vusa_base": 66.55,
-    "dispo": 0,
-    "entry_timestamp": 1792058580000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:19",
-    "po": 29.96,
-    "vwrl_base": 43.45,
-    "vusa_base": 66.55,
-    "dispo": 0,
-    "entry_timestamp": 1792059540000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:21",
-    "po": 30.76,
-    "vwrl_base": 43.45,
-    "vusa_base": 66.55,
-    "dispo": 0,
-    "entry_timestamp": 1792059660000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:26",
-    "po": 32.6,
-    "vwrl_base": 43.45,
-    "vusa_base": 66.55,
-    "dispo": 0,
-    "entry_timestamp": 1792059960000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:37",
-    "po": 33.04,
-    "vwrl_base": 43.45,
-    "vusa_base": 66.55,
-    "dispo": 0,
-    "entry_timestamp": 1792060620000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:54",
-    "po": 33.84,
-    "vwrl_base": 43.46,
-    "vusa_base": 6654,
-    "dispo": 0,
-    "entry_timestamp": 1792061640000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:58",
-    "po": 33.04,
-    "vwrl_base": 43.46,
-    "vusa_base": 66.52,
-    "dispo": 0,
-    "entry_timestamp": 1792061880000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:59",
-    "po": 33.84,
-    "vwrl_base": 43.46,
-    "vusa_base": 66.52,
-    "dispo": 0,
-    "entry_timestamp": 1792061940000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "12:59",
-    "po": 11.76,
-    "vwrl_base": 43.46,
-    "vusa_base": 66.52,
-    "dispo": 0,
-    "entry_timestamp": 1792061940000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "13:07",
-    "po": 12.6,
-    "vwrl_base": 43.46,
-    "vusa_base": 66.52,
-    "dispo": 0,
-    "entry_timestamp": 1792062420000
-  },
-  {
-    "date": "2026-10-15",
-    "time": "13:09",
-    "po": 17.74,
-    "vwrl_base": 43.46,
-    "vusa_base": 66.52,
-    "dispo": 0,
-    "entry_timestamp": 1792062540000
+    "entry_timestamp": 1792056960000
   }
 ]
