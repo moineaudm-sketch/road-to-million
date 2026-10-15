@@ -667,11 +667,38 @@
   },
   {
     "date": "2026-10-15",
+    "time": "12:54",
+    "po": 33.84,
+    "vwrl_base": 43.46,
+    "vusa_base": 6654,
+    "dispo": 0,
+    "entry_timestamp": 1792061640000
+  },
+  {
+    "date": "2026-10-15",
     "time": "12:58",
     "po": 33.04,
     "vwrl_base": 43.46,
     "vusa_base": 66.52,
     "dispo": 0,
     "entry_timestamp": 1792061880000
+  },
+  {
+    "date": "2026-10-15",
+    "time": "12:59",
+    "po": 33.84,
+    "vwrl_base": 43.46,
+    "vusa_base": 66.52,
+    "dispo": 0,
+    "entry_timestamp": 1792061940000
+  },
+  {
+    "date": "2026-10-15",
+    "time": "12:59",
+    "po": 11.76,
+    "vwrl_base": 43.46,
+    "vusa_base": 66.52,
+    "dispo": 0,
+    "entry_timestamp": 1792061940000
   }
 ]
