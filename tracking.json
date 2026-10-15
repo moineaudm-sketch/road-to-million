@@ -667,11 +667,11 @@
   },
   {
     "date": "2026-10-15",
-    "time": "12:54",
-    "po": 33.84,
+    "time": "12:58",
+    "po": 33.04,
     "vwrl_base": 43.46,
-    "vusa_base": 6654,
+    "vusa_base": 66.52,
     "dispo": 0,
-    "entry_timestamp": 1792061640000
+    "entry_timestamp": 1792061880000
   }
 ]
