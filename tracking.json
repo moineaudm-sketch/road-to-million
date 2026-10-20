@@ -718,5 +718,14 @@
     "vusa_base": 0.0001,
     "dispo": 0,
     "entry_timestamp": 1792499760000
+  },
+  {
+    "date": "2026-10-20",
+    "time": "14:37",
+    "po": 116.63,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 0,
+    "entry_timestamp": 1792499820000
   }
 ]
