@@ -1108,12 +1108,21 @@
   },
   {
     "date": "2026-10-25",
-    "time": "20:11",
+    "time": "19:30",
     "po": 600.9,
     "vwrl_base": 0.0001,
     "vusa_base": 0.0001,
     "dispo": 0,
-    "entry_timestamp": 1792955460000
+    "entry_timestamp": 1792953000000
+  },
+  {
+    "date": "2026-10-25",
+    "time": "20:00",
+    "po": 748.68,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 0,
+    "entry_timestamp": 1792954800000
   },
   {
     "date": "2026-10-25",
@@ -1125,12 +1134,12 @@
     "entry_timestamp": 1792955460000
   },
   {
-    "date": "2026-10-25",
-    "time": "20:00",
-    "po": 748.68,
+    "date": "2026-10-26",
+    "time": "10:34",
+    "po": 654.47,
     "vwrl_base": 0.0001,
     "vusa_base": 0.0001,
     "dispo": 0,
-    "entry_timestamp": 1792954800000
+    "entry_timestamp": 1793007240000
   }
 ]
