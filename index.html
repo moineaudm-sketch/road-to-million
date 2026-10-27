@@ -81,6 +81,18 @@
   </div>
 
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+    <h2 style="margin-top: 0;">Répartition des retraits (cumul des paliers validés)</h2>
+    <div class="soldes-grid">
+      <div class="solde-card" style="border-left-color: #dc2626;"><div class="solde-label">Impôts flat tax (30%)</div><div class="solde-value" id="bucket_impots">—</div></div>
+      <div class="solde-card" style="border-left-color: #2563eb;"><div class="solde-label">Livret A Manu (14%)</div><div class="solde-value" id="bucket_livret_manu">—</div></div>
+      <div class="solde-card" style="border-left-color: #db2777;"><div class="solde-label">Livret A Léa (14%)</div><div class="solde-value" id="bucket_livret_lea">—</div></div>
+      <div class="solde-card" style="border-left-color: #f59e0b;"><div class="solde-label">Livret A Emma (7%)</div><div class="solde-value" id="bucket_livret_emma">—</div></div>
+      <div class="solde-card" style="border-left-color: #16a34a;"><div class="solde-label">Solde sécurité (14%)</div><div class="solde-value" id="bucket_securite">—</div></div>
+      <div class="solde-card" style="border-left-color: #8b5cf6;"><div class="solde-label">Budget familial (21%)</div><div class="solde-value" id="bucket_budget">—</div></div>
+    </div>
+  </div>
+
+  <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
     <h2 style="margin-top: 0;">Répartition Actuelle</h2>
     <div class="indep-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
       <div>
@@ -305,10 +317,11 @@
         </div>
       </div>
     </div>
+    <div id="tierValidation"></div>
   </div>
 
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
-    <h2 style="margin-top: 0;">ETA Indépendance Financière (Dispo)</h2>
+    <h2 style="margin-top: 0;">ETA Indépendance Financière (Livrets A)</h2>
     <div class="indep-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -427,7 +440,48 @@ const VWRL_ANNUAL_RATE = 0.055; const VUSA_ANNUAL_RATE = 0.09; const VWRL_PRICE 
 // Base des paliers de retrait : chaque palier double son propre solde retenu (pas un point fixe),
 // donc le solde après retrait = 1.5x le solde de référence du palier précédent. Calibré pour que le
 // palier 4 reste 300€ → 600€ (retrait 150€), avec 3 paliers de reprise ajoutés en dessous.
-const TIER_BASE = 800 / 9; // ≈ 88,89€
+const TIER_BASE = 300; // Palier 1 : 300€ → 600€
+
+// Répartition d'un retrait de palier (modifiable dans le formulaire de validation avant confirmation)
+const WITHDRAWAL_SPLIT = [
+  { key: 'impots', label: 'Impôts flat tax', pct: 0.30 },
+  { key: 'livret_manu', label: 'Livret A Manu', pct: 0.14 },
+  { key: 'livret_lea', label: 'Livret A Léa', pct: 0.14 },
+  { key: 'livret_emma', label: 'Livret A Emma', pct: 0.07 },
+  { key: 'securite', label: 'Solde sécurité', pct: 0.14 },
+  { key: 'budget', label: 'Budget familial', pct: 0.21 }
+];
+
+// Retraits de palier validés (stockés dans tracking.json sur l'entrée créée à la validation)
+function getValidatedWithdrawals() { return trackingData.filter(t => t.withdrawal).map(t => t.withdrawal); }
+
+// Palier en cours : le palier 1 part de TIER_BASE ; chaque palier suivant part du solde retenu après
+// le retrait validé du précédent (cible du palier − montant réellement retiré)
+function getTierState() {
+  const w = getValidatedWithdrawals();
+  if (w.length === 0) return { tier: 1, ref: TIER_BASE, target: TIER_BASE * 2 };
+  const lastW = w[w.length - 1];
+  const ref = lastW.target - lastW.total;
+  return { tier: w.length + 1, ref, target: ref * 2 };
+}
+
+// Plus haut solde PO jamais saisi : un palier reste « atteint » même si le solde a baissé après le retrait
+function getMaxPO() { return trackingData.reduce((m, t) => Math.max(m, t.po || 0), 0); }
+
+function getWithdrawalTotals() {
+  const totals = {};
+  WITHDRAWAL_SPLIT.forEach(s => { totals[s.key] = 0; });
+  getValidatedWithdrawals().forEach(w => WITHDRAWAL_SPLIT.forEach(s => { totals[s.key] += w[s.key] || 0; }));
+  return totals;
+}
+
+function updateWithdrawalBuckets() {
+  const totals = getWithdrawalTotals();
+  WITHDRAWAL_SPLIT.forEach(s => {
+    const el = document.getElementById('bucket_' + s.key);
+    if (el) el.textContent = `€${totals[s.key].toFixed(2)}`;
+  });
+}
 let trackingData = [];
 // Dernier recours seulement (ni distant ni cache local disponibles) — reflète les vraies premières saisies
 const initialEntries = [
@@ -918,6 +972,7 @@ function updateAllocationChart() {
 }
 
 function updateSoldes() {
+  updateWithdrawalBuckets();
   updateEvolution();
   updateAllocationChart();
   if (trackingData.length === 0) {
@@ -976,7 +1031,7 @@ function updateSoldes() {
   document.getElementById('solde_dispo').textContent = `€${last.dispo.toFixed(2)}`;
   document.getElementById('solde_total').textContent = `€${portfolioTotal.toFixed(2)}`;
   document.getElementById('solde_total_pct').textContent = `${((portfolioTotal - 300) / 300 * 100).toFixed(1) >= 0 ? '+' : ''}${((portfolioTotal - 300) / 300 * 100).toFixed(1)}%`;
-  document.getElementById('solde_retired').textContent = `€${(trackingData.reduce((sum, t) => sum, 0)).toFixed(2)}`;
+  document.getElementById('solde_retired').textContent = `€${getValidatedWithdrawals().reduce((sum, w) => sum + (w.total || 0), 0).toFixed(2)}`;
 
   // Objectif Robot Trading (1000€ PO seulement)
   const robotTarget = 1000;
@@ -1163,9 +1218,9 @@ function generateRealProjection() {
     } else if (isTradingDay && new Date(dateStr) > new Date(lastEntry.date)) {
       if (tierRefBalance === null) {
         // Déterminer le solde de référence du palier en cours à partir du solde réel actuel
-        tierRefBalance = TIER_BASE;
-        while (po >= tierRefBalance * 2) tierRefBalance *= 1.5;
-        nextDoubleTarget = tierRefBalance * 2;
+        const tierState = getTierState();
+        tierRefBalance = tierState.ref;
+        nextDoubleTarget = tierState.target;
       }
 
       // Après dernier suivi : continuer sur le taux réel observé
@@ -1292,7 +1347,8 @@ function updateETA() {
   // Mise à jour % Indépendance
   let currentLivretA = 0;
   if (trackingData.length > 0) {
-    currentLivretA = trackingData[trackingData.length - 1].dispo || 0;
+    const wt = getWithdrawalTotals();
+    currentLivretA = wt.livret_manu + wt.livret_lea + wt.livret_emma;
   }
 
   const indep2500Pct = Math.min((currentLivretA / 30000) * 100, 100);
@@ -1346,6 +1402,94 @@ function updateETA() {
   }
 }
 
+// Répartition arrondie au centime ; le dernier poste absorbe l'écart d'arrondi pour que la somme = total
+function splitWithdrawal(total) {
+  const out = {};
+  let acc = 0;
+  WITHDRAWAL_SPLIT.forEach((s, i) => {
+    const v = i === WITHDRAWAL_SPLIT.length - 1 ? Math.round((total - acc) * 100) / 100 : Math.round(total * s.pct * 100) / 100;
+    out[s.key] = v;
+    acc += v;
+  });
+  return out;
+}
+
+function renderTierValidation(tierState, tierReached, retraitDefault) {
+  const box = document.getElementById('tierValidation');
+  if (!box) return;
+  if (!tierState || !tierReached) { box.innerHTML = ''; box.dataset.tier = ''; return; }
+  if (box.dataset.tier === String(tierState.tier)) return; // ne pas écraser une saisie en cours
+  box.dataset.tier = String(tierState.tier);
+  const defaults = splitWithdrawal(retraitDefault);
+  const fields = WITHDRAWAL_SPLIT.map(s => `
+        <label style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">${s.label} (${Math.round(s.pct * 100)}%)
+          <input type="number" step="0.01" min="0" id="tv_${s.key}" value="${defaults[s.key].toFixed(2)}" oninput="updateTierValidationSum()" style="width: 100%;">
+        </label>`).join('');
+  box.innerHTML = `
+    <div style="margin-top: 1rem; padding: 1rem; background: #fff; border: 2px solid #16a34a; border-radius: 8px;">
+      <div style="font-weight: 600; color: #15803d; margin-bottom: 0.75rem;">✅ Palier ${tierState.tier} atteint (€${tierState.ref.toFixed(2)} → €${tierState.target.toFixed(2)}) — valider le retrait</div>
+      <label style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 12px; margin-bottom: 0.75rem;">Montant total du retrait (€)
+        <input type="number" step="0.01" min="0" id="tv_total" value="${retraitDefault.toFixed(2)}" oninput="applyTierValidationSplit()" style="width: 120px;">
+        <span style="color: #666;">(modifier ce montant recalcule la répartition)</span>
+      </label>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem;">${fields}
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <button onclick="validateTier()">Valider le palier ${tierState.tier}</button>
+        <span style="font-size: 12px; color: #666;">Total réparti : <strong id="tv_sum">€${retraitDefault.toFixed(2)}</strong></span>
+      </div>
+    </div>`;
+}
+
+function applyTierValidationSplit() {
+  const total = parseFloat(document.getElementById('tv_total').value) || 0;
+  const parts = splitWithdrawal(total);
+  WITHDRAWAL_SPLIT.forEach(s => { document.getElementById('tv_' + s.key).value = parts[s.key].toFixed(2); });
+  updateTierValidationSum();
+}
+
+function updateTierValidationSum() {
+  const sum = WITHDRAWAL_SPLIT.reduce((acc, s) => acc + (parseFloat(document.getElementById('tv_' + s.key).value) || 0), 0);
+  document.getElementById('tv_sum').textContent = `€${sum.toFixed(2)}`;
+}
+
+function validateTier() {
+  if (trackingData.length === 0) return;
+  const st = getTierState();
+  if (getMaxPO() < st.target) { showToast('❌ Palier pas encore atteint'); return; }
+  const amounts = {};
+  let total = 0;
+  for (const s of WITHDRAWAL_SPLIT) {
+    const v = parseFloat(document.getElementById('tv_' + s.key).value) || 0;
+    if (v < 0) { showToast('❌ Montants négatifs interdits'); return; }
+    amounts[s.key] = Math.round(v * 100) / 100;
+    total += amounts[s.key];
+  }
+  total = Math.round(total * 100) / 100;
+  if (total <= 0) { showToast('❌ Montant de retrait invalide'); return; }
+  if (!confirm(`Valider le palier ${st.tier} (€${st.ref.toFixed(2)} → €${st.target.toFixed(2)}) avec un retrait de €${total.toFixed(2)} ?`)) return;
+
+  // Nouvelle entrée = photo des soldes actuels + le retrait validé. Le solde PO n'est pas modifié
+  // (il est saisi tel quel après le retrait réel) ; le montant réparti sort du « Dispo ».
+  const last = trackingData[trackingData.length - 1];
+  const now = new Date();
+  const dateStr = toLocalDateStr(now);
+  const timeStr = now.toTimeString().substring(0, 5);
+  trackingData.push({
+    date: dateStr, time: timeStr, po: last.po, vwrl_base: last.vwrl_base, vusa_base: last.vusa_base,
+    dispo: Math.max(0, Math.round(((last.dispo || 0) - total) * 100) / 100),
+    entry_timestamp: Math.max(now.getTime(), (last.entry_timestamp || 0) + 1),
+    withdrawal: { tier: st.tier, ref: st.ref, target: st.target, total, ...amounts, validated_at: now.toISOString() }
+  });
+  saveData();
+  pushTrackingToGitHub();
+  document.getElementById('tierValidation').dataset.tier = '';
+  showToast(`✓ Palier ${st.tier} validé — €${total.toFixed(2)} réparti`);
+  updateSoldes();
+  updateTrackingTable();
+  updateAllCharts();
+}
+
 function updateNextTier() {
   if (trackingData.length === 0) {
     document.getElementById('nextTierLabel').textContent = '—';
@@ -1357,6 +1501,7 @@ function updateNextTier() {
     document.getElementById('eta_next_mean').textContent = '—';
     document.getElementById('eta_next_opt').textContent = '—';
     document.getElementById('eta_next_real').textContent = '—';
+    renderTierValidation(null, false, 0);
     return;
   }
 
@@ -1365,12 +1510,10 @@ function updateNextTier() {
 
   // Trouver quel palier est actuellement en cours de déblocage : chaque palier double son propre
   // solde de référence réellement retenu après le retrait précédent (pas un point fixe)
-  let tierToUnlock = 1;
-  let tierRefBalance = TIER_BASE;
-  while (currentPO >= tierRefBalance * 2) {
-    tierRefBalance *= 1.5;
-    tierToUnlock += 1;
-  }
+  const tierState = getTierState();
+  const tierToUnlock = tierState.tier;
+  const tierRefBalance = tierState.ref;
+  const tierReached = getMaxPO() >= tierState.target;
 
   const currentTarget = tierRefBalance;
   const nextTarget = tierRefBalance * 2;
@@ -1386,7 +1529,7 @@ function updateNextTier() {
   const toBudget = retrait * 0.21;
 
   // Afficher info
-  document.getElementById('nextTierLabel').textContent = `Palier ${tierToUnlock} (€${currentTarget.toFixed(0)} → €${nextTarget.toFixed(0)})`;
+  document.getElementById('nextTierLabel').textContent = `Palier ${tierToUnlock} (€${currentTarget.toFixed(2)} → €${nextTarget.toFixed(2)})${tierReached ? ' — ✅ ATTEINT, à valider' : ''}`;
 
   // Base de la barre de progression : si le solde n'a pas encore atteint le seuil théorique du
   // palier (currentTarget), ce seuil n'a pas de sens comme point de départ (donnerait un % négatif
@@ -1397,7 +1540,7 @@ function updateNextTier() {
   document.getElementById('nextTierRange').textContent = `Progression: €${currentPO.toFixed(0)} / €${nextTarget.toFixed(0)} (${((currentPO - progressBase) / (nextTarget - progressBase) * 100).toFixed(1)}%) — Gain: €${gain.toFixed(0)}`;
 
   // Mise à jour % et barre
-  const tierPct = Math.min(Math.max((currentPO - progressBase) / (nextTarget - progressBase) * 100, 0), 100);
+  const tierPct = tierReached ? 100 : Math.min(Math.max((currentPO - progressBase) / (nextTarget - progressBase) * 100, 0), 100);
   document.getElementById('nextTier_pct').textContent = `${tierPct.toFixed(1)}%`;
   document.getElementById('nextTier_bar').style.width = `${tierPct}%`;
   document.getElementById('nextTierSplit').innerHTML = `
@@ -1410,6 +1553,7 @@ function updateNextTier() {
     <div>└ Budget familial (21%): €${toBudget.toFixed(2)}</div>
     <div style="margin-top: 4px; opacity: 0.7;">ETF en pause</div>
   `;
+  renderTierValidation(tierState, tierReached, retrait);
 
   // Calculer ETAs pour atteindre le prochain palier : projection directe depuis le VRAI solde PO
   // actuel (currentPO), pas depuis les 307€ de départ théorique du 11/09 utilisés par
@@ -1428,6 +1572,7 @@ function updateNextTier() {
   };
 
   const etaFromDailyRate = (dailyRate) => {
+    if (tierReached) return 'Atteint ✓';
     if (currentPO <= 0 || currentPO >= nextTarget || dailyRate <= 0) return '+2000j';
     const tradingDaysNeeded = Math.ceil(Math.log(nextTarget / currentPO) / Math.log(1 + dailyRate));
     if (!isFinite(tradingDaysNeeded) || tradingDaysNeeded > 2000) return '+2000j';
@@ -1898,7 +2043,7 @@ function updateTrackingTable() {
     const totalEtf = vwrlVal + vusaVal; const total = row.po + totalEtf;
     if (lastDate !== row.date) { if (lastDate !== null) html += '<tr style="height: 4px; background: #e0e0e0;"><td colspan="7"></td></tr>'; lastDate = row.date; }
     const timeStr = row.time || '—';
-    const rowData = { datetime: `${row.date} ${timeStr} <button class="secondary" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;" onclick="editEntryDate(${row.entry_timestamp})" title="Corriger la date/heure">✏️</button>`, po: row.po.toFixed(2), vwrl: vwrlVal.toFixed(2), vusa: vusaVal.toFixed(2), etf_total: totalEtf.toFixed(2), dispo: row.dispo.toFixed(2), total: total.toFixed(2) };
+    const rowData = { datetime: `${row.date} ${timeStr}${row.withdrawal ? ` <span title="Retrait de palier validé" style="color: #15803d; font-weight: 600;">✅ P${row.withdrawal.tier} −€${row.withdrawal.total.toFixed(2)}</span>` : ''} <button class="secondary" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;" onclick="editEntryDate(${row.entry_timestamp})" title="Corriger la date/heure">✏️</button>`, po: row.po.toFixed(2), vwrl: vwrlVal.toFixed(2), vusa: vusaVal.toFixed(2), etf_total: totalEtf.toFixed(2), dispo: row.dispo.toFixed(2), total: total.toFixed(2) };
     let rowHtml = '<tr>'; columns.forEach(col => { if (col.visible) rowHtml += `<td>${rowData[col.id]}</td>`; }); rowHtml += '</tr>';
     html += rowHtml;
   });
