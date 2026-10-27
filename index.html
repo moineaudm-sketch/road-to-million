@@ -1605,15 +1605,17 @@ function decimateToWeekly(projection) {
   return weekly;
 }
 
-// Liste déroulante des paliers : les paliers déjà validés sont retirés, le palier en cours est
-// sélectionné par défaut. Reconstruite seulement quand le palier en cours change (garde le choix manuel).
+// Liste déroulante des paliers : part du palier 1 (300€ → 600€, les anciens paliers de reprise sans
+// retrait n'existent plus), paliers validés marqués ✓, palier en cours sélectionné par défaut.
+// Reconstruite seulement quand le palier en cours change (garde le choix manuel).
 function populateTierSelect() {
   const sel = document.getElementById('tierSelect');
   if (!sel) return;
   const st = getTierState();
   if (sel.dataset.currentTier === String(st.tier)) return;
   const fmt = v => `${Math.round(v).toLocaleString('en-US')}€`;
-  const opts = [];
+  const opts = getValidatedWithdrawals().map(w =>
+    `<option value="${w.tier}">Palier ${w.tier} ✓ validé (${fmt(w.ref)} → ${fmt(w.target)})</option>`);
   let ref = st.ref;
   for (let n = st.tier; ; n++) {
     const target = ref * 2;
