@@ -1029,12 +1029,11 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
       if (po >= nextDoubleTarget) {
         const gain = po - tierRefBalance;
         const retrait = gain * 0.5; // Retirer 50% du gain
-        const toLivretA = retrait * 0.5; // 50% vers Livret A
-        const toETF = retrait * 0.5; // 50% vers ETF
-
-        // Split ETF: 60% VWCE, 40% VUSD (selon stratégie)
-        const toVWRL = toETF * 0.6;
-        const toVUSA = toETF * 0.4;
+        // Règle retrait : 30% impôts ; Livrets A Manu 14% + Léa 14% + Emma 7% (=35%) ; sécurité 14% ; budget familial 21%
+        // ETF en pause : rien vers VWCE/VUSD
+        const toLivretA = retrait * 0.35;
+        const toVWRL = 0;
+        const toVUSA = 0;
 
         po -= retrait;
         vwrl += toVWRL;
@@ -1179,10 +1178,10 @@ function generateRealProjection() {
       if (po >= nextDoubleTarget) {
         const gain = po - tierRefBalance;
         const retrait = gain * 0.5;
-        const toLivretA = retrait * 0.5;
-        const toETF = retrait * 0.5;
-        const toVWRL = toETF * 0.6;
-        const toVUSA = toETF * 0.4;
+        // Même règle que generateProjection : Livrets A = 35% du retrait, ETF en pause
+        const toLivretA = retrait * 0.35;
+        const toVWRL = 0;
+        const toVUSA = 0;
 
         po -= retrait;
         vwrl += toVWRL;
@@ -1379,10 +1378,12 @@ function updateNextTier() {
   // Retrait attendu = 50% du gain
   const gain = nextTarget - currentTarget;
   const retrait = gain * 0.5;
-  const toETF = retrait * 0.5;
-  const toLivretA = retrait * 0.5;
-  const toVWRL = toETF * 0.6;
-  const toVUSA = toETF * 0.4;
+  const toImpots = retrait * 0.30;
+  const toManu = retrait * 0.14;
+  const toLea = retrait * 0.14;
+  const toEmma = retrait * 0.07;
+  const toSecurite = retrait * 0.14;
+  const toBudget = retrait * 0.21;
 
   // Afficher info
   document.getElementById('nextTierLabel').textContent = `Palier ${tierToUnlock} (€${currentTarget.toFixed(0)} → €${nextTarget.toFixed(0)})`;
@@ -1400,11 +1401,14 @@ function updateNextTier() {
   document.getElementById('nextTier_pct').textContent = `${tierPct.toFixed(1)}%`;
   document.getElementById('nextTier_bar').style.width = `${tierPct}%`;
   document.getElementById('nextTierSplit').innerHTML = `
-    <div>Retrait (50% du gain): €${retrait.toFixed(0)}</div>
-    <div>├ Dispo: €${toLivretA.toFixed(0)}</div>
-    <div>└ ETF: €${toETF.toFixed(0)}</div>
-    <div style="margin-left: 1.2em;">├ VWCE (60%): €${toVWRL.toFixed(0)}</div>
-    <div style="margin-left: 1.2em;">└ VUSD (40%): €${toVUSA.toFixed(0)}</div>
+    <div>Retrait (50% du gain): €${retrait.toFixed(2)}</div>
+    <div>├ Impôts flat tax (30%): €${toImpots.toFixed(2)}</div>
+    <div>├ Livret A Manu (14%): €${toManu.toFixed(2)}</div>
+    <div>├ Livret A Léa (14%): €${toLea.toFixed(2)}</div>
+    <div>├ Livret A Emma (7%): €${toEmma.toFixed(2)}</div>
+    <div>├ Solde sécurité (14%): €${toSecurite.toFixed(2)}</div>
+    <div>└ Budget familial (21%): €${toBudget.toFixed(2)}</div>
+    <div style="margin-top: 4px; opacity: 0.7;">ETF en pause</div>
   `;
 
   // Calculer ETAs pour atteindre le prochain palier : projection directe depuis le VRAI solde PO
