@@ -1199,5 +1199,27 @@
       "budget": 4.46,
       "validated_at": "2026-10-27T08:27:03.075Z"
     }
+  },
+  {
+    "date": "2026-10-27",
+    "time": "09:28",
+    "po": 1019.57,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 337.5,
+    "entry_timestamp": 1793089703601,
+    "withdrawal": {
+      "tier": 2,
+      "ref": 450,
+      "target": 900,
+      "total": 225,
+      "impots": 0,
+      "livret_manu": 31.5,
+      "livret_lea": 31.5,
+      "livret_emma": 15.75,
+      "securite": 31.5,
+      "budget": 114.75,
+      "validated_at": "2026-10-27T08:28:23.601Z"
+    }
   }
 ]
