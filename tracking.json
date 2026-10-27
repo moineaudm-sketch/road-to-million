@@ -1177,5 +1177,27 @@
     "vusa_base": 0.0001,
     "dispo": 712.5,
     "entry_timestamp": 1793044800000
+  },
+  {
+    "date": "2026-10-27",
+    "time": "09:27",
+    "po": 1019.57,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 562.5,
+    "entry_timestamp": 1793089623075,
+    "withdrawal": {
+      "tier": 1,
+      "ref": 300,
+      "target": 600,
+      "total": 150,
+      "impots": 72.04,
+      "livret_manu": 21,
+      "livret_lea": 21,
+      "livret_emma": 10.5,
+      "securite": 21,
+      "budget": 4.46,
+      "validated_at": "2026-10-27T08:27:03.075Z"
+    }
   }
 ]
