@@ -1038,7 +1038,7 @@ function updateSoldes() {
   const poBase = 300;
   const poGrowth = Math.max(last.po - poBase, 0);
   const copieSteps = Math.floor(poGrowth / 150);
-  const copiePercent = 2 + copieSteps; // Base 2%, +1% par palier
+  const copiePercent = 1 + copieSteps; // Base 1% à 300€, +1% par tranche de 150€
   const nextCopieTarget = poBase + ((copieSteps + 1) * 150);
   const copieRemaining = Math.max(nextCopieTarget - last.po, 0);
   const copiePct = (poGrowth % 150) / 150 * 100;
