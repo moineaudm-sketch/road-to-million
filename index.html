@@ -1157,6 +1157,10 @@ function computeRecoveryDailyRate() {
   return Math.pow(last.po / start.po, 1 / daysBetween) - 1;
 }
 
+// Plafond du taux de continuation du suivi réel = scénario optimiste. Le taux de reprise mesuré depuis
+// le point bas du crash (dépôts inclus) dépasse 10 %/j : composé sur des mois, il donnait des montants absurdes.
+const REAL_RATE_CAP = 0.012;
+
 function generateRealProjection() {
   // Suivi réel (points exacts saisis) puis continuation en projection sur le taux réel observé
   if (trackingData.length === 0) return null;
@@ -1165,7 +1169,7 @@ function generateRealProjection() {
   // Continuation sur le taux de la reprise en cours (depuis le point bas du crash), pas la moyenne
   // sur tout l'historique crash+reprise qui resterait fortement négative en permanence.
   const observedDailyRate = computeRecoveryDailyRate();
-  const continuationRate = observedDailyRate !== null ? observedDailyRate : 0.010; // repli sur la moyenne si historique trop court (< 2 jours)
+  const continuationRate = observedDailyRate !== null ? Math.min(observedDailyRate, REAL_RATE_CAP) : 0.010; // repli sur la moyenne si historique trop court (< 2 jours)
 
   // Créer map de suivi réel
   const trackingByDate = {};
@@ -1909,7 +1913,7 @@ function updateAllCharts() {
   const realRateEl = document.getElementById('realRateInfo');
   if (realRateEl) {
     realRateEl.textContent = observedRate !== null
-      ? `${(observedRate * 100).toFixed(2)}%/j depuis le début de la reprise — la projection continue sur ce même taux après la dernière saisie`
+      ? `${(observedRate * 100).toFixed(2)}%/j observé depuis le début de la reprise — après la dernière saisie, la projection continue à ${(Math.min(observedRate, REAL_RATE_CAP) * 100).toFixed(2)}%/j (plafonné à l'optimiste)`
       : '—';
   }
 
