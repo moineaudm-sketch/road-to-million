@@ -321,7 +321,7 @@
   </div>
 
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
-    <h2 style="margin-top: 0;">ETA Indépendance Financière (Livrets A)</h2>
+    <h2 style="margin-top: 0;">ETA Indépendance Financière (Dispo)</h2>
     <div class="indep-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -340,17 +340,17 @@
       </div>
       <div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <h3 style="font-size: 12px; font-weight: 600; margin: 0;">4,000 €/mois (€48,000)</h3>
-          <div style="font-size: 11px; font-weight: 600; color: #666;" id="indep_4000_pct">—</div>
+          <h3 style="font-size: 12px; font-weight: 600; margin: 0;">5,000 €/mois (€60,000)</h3>
+          <div style="font-size: 11px; font-weight: 600; color: #666;" id="indep_5000_pct">—</div>
         </div>
         <div style="width: 100%; height: 6px; background: #e5e7eb; border-radius: 3px; margin-bottom: 0.75rem; overflow: hidden;">
-          <div id="indep_4000_bar" style="height: 100%; width: 0%; background: #2a78d6; transition: width 0.3s;"></div>
+          <div id="indep_5000_bar" style="height: 100%; width: 0%; background: #2a78d6; transition: width 0.3s;"></div>
         </div>
         <div class="soldes-grid">
-          <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">Pess</div><div class="solde-value" id="eta_indep_4000_pess" style="font-size: 16px;">—</div></div>
-          <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">Moyen</div><div class="solde-value" id="eta_indep_4000_mean" style="font-size: 16px;">—</div></div>
-          <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">Opt</div><div class="solde-value" id="eta_indep_4000_opt" style="font-size: 16px;">—</div></div>
-          <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Réel</div><div class="solde-value" id="eta_indep_4000_real" style="font-size: 16px; font-weight: 600;">—</div></div>
+          <div class="solde-card" style="border-left-color: #eb6834;"><div class="solde-label">Pess</div><div class="solde-value" id="eta_indep_5000_pess" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #2a78d6;"><div class="solde-label">Moyen</div><div class="solde-value" id="eta_indep_5000_mean" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #1baf7a;"><div class="solde-label">Opt</div><div class="solde-value" id="eta_indep_5000_opt" style="font-size: 16px;">—</div></div>
+          <div class="solde-card" style="border-left-color: #e34948;"><div class="solde-label">Réel</div><div class="solde-value" id="eta_indep_5000_real" style="font-size: 16px; font-weight: 600;">—</div></div>
         </div>
       </div>
     </div>
@@ -473,6 +473,18 @@ function getWithdrawalTotals() {
   WITHDRAWAL_SPLIT.forEach(s => { totals[s.key] = 0; });
   getValidatedWithdrawals().forEach(w => WITHDRAWAL_SPLIT.forEach(s => { totals[s.key] += w[s.key] || 0; }));
   return totals;
+}
+
+// Dispo = cumul des retraits validés moins la flat tax, recalculé sur chaque entrée de validation
+// (corrige aussi les validations enregistrées avec l'ancienne règle)
+function normalizeWithdrawalDispo() {
+  let net = 0;
+  trackingData.forEach(t => {
+    if (t.withdrawal) {
+      net += (t.withdrawal.total || 0) - (t.withdrawal.impots || 0);
+      t.dispo = Math.round(net * 100) / 100;
+    }
+  });
 }
 
 function updateWithdrawalBuckets() {
@@ -633,6 +645,7 @@ async function loadData() {
     return dateA - dateB;
   });
 
+  normalizeWithdrawalDispo();
   saveData();
   if (recoveredLocalEntries) {
     // Volontairement PAS de push automatique ici : une entrée locale peut être une vraie saisie
@@ -700,7 +713,7 @@ function addTracking() {
   if (poValue === null) { poValue = 0; for (let i = trackingData.length - 1; i >= 0; i--) { if (trackingData[i].po) { poValue = trackingData[i].po; break; } } }
   if (vwrlValue === null) { vwrlValue = 0; for (let i = trackingData.length - 1; i >= 0; i--) { if (trackingData[i].vwrl_base) { vwrlValue = trackingData[i].vwrl_base; break; } } }
   if (vusaValue === null) { vusaValue = 0; for (let i = trackingData.length - 1; i >= 0; i--) { if (trackingData[i].vusa_base) { vusaValue = trackingData[i].vusa_base; break; } } }
-  if (dispoValue === null) { dispoValue = 0; }
+  if (dispoValue === null) { dispoValue = trackingData.length > 0 ? (trackingData[trackingData.length - 1].dispo || 0) : 0; }
 
   const vwrlPrice = parseFloat(document.getElementById('vwrlPrice').value) || VWRL_PRICE;
   const vusaPrice = parseFloat(document.getElementById('vusaPrice').value) || VUSA_PRICE;
@@ -1084,9 +1097,8 @@ function generateProjection(daysOfTrading, dailyRate, vwrlAnnualRate, vusaAnnual
       if (po >= nextDoubleTarget) {
         const gain = po - tierRefBalance;
         const retrait = gain * 0.5; // Retirer 50% du gain
-        // Règle retrait : 30% impôts ; Livrets A Manu 14% + Léa 14% + Emma 7% (=35%) ; sécurité 14% ; budget familial 21%
-        // ETF en pause : rien vers VWCE/VUSD
-        const toLivretA = retrait * 0.35;
+        // Règle retrait : 30% flat tax ; Dispo = retrait − flat tax (70%) ; ETF en pause : rien vers VWCE/VUSD
+        const toLivretA = retrait * 0.70;
         const toVWRL = 0;
         const toVUSA = 0;
 
@@ -1214,6 +1226,7 @@ function generateRealProjection() {
       po = t.po;
       vwrl = t.vwrl_base || 0;
       vusa = t.vusa_base || 0;
+      livretA = t.dispo || 0; // Dispo réel saisi = point de départ de l'indépendance financière
       cumulativeDeposits = vwrl + vusa; // redéfinit le capital de référence à chaque saisie réelle
     } else if (isTradingDay && new Date(dateStr) > new Date(lastEntry.date)) {
       if (tierRefBalance === null) {
@@ -1233,8 +1246,8 @@ function generateRealProjection() {
       if (po >= nextDoubleTarget) {
         const gain = po - tierRefBalance;
         const retrait = gain * 0.5;
-        // Même règle que generateProjection : Livrets A = 35% du retrait, ETF en pause
-        const toLivretA = retrait * 0.35;
+        // Même règle que generateProjection : Dispo = 70% du retrait (retrait − flat tax), ETF en pause
+        const toLivretA = retrait * 0.70;
         const toVWRL = 0;
         const toVUSA = 0;
 
@@ -1339,26 +1352,25 @@ function updateETA() {
   document.getElementById('eta_indep_2500_opt').textContent = findLivretETADate(projOpt, 30000);
   document.getElementById('eta_indep_2500_real').textContent = findLivretETADate(projReal, 30000);
 
-  document.getElementById('eta_indep_4000_pess').textContent = findLivretETADate(projPess, 48000);
-  document.getElementById('eta_indep_4000_mean').textContent = findLivretETADate(projMean, 48000);
-  document.getElementById('eta_indep_4000_opt').textContent = findLivretETADate(projOpt, 48000);
-  document.getElementById('eta_indep_4000_real').textContent = findLivretETADate(projReal, 48000);
+  document.getElementById('eta_indep_5000_pess').textContent = findLivretETADate(projPess, 60000);
+  document.getElementById('eta_indep_5000_mean').textContent = findLivretETADate(projMean, 60000);
+  document.getElementById('eta_indep_5000_opt').textContent = findLivretETADate(projOpt, 60000);
+  document.getElementById('eta_indep_5000_real').textContent = findLivretETADate(projReal, 60000);
 
   // Mise à jour % Indépendance
   let currentLivretA = 0;
   if (trackingData.length > 0) {
-    const wt = getWithdrawalTotals();
-    currentLivretA = wt.livret_manu + wt.livret_lea + wt.livret_emma;
+    currentLivretA = trackingData[trackingData.length - 1].dispo || 0;
   }
 
   const indep2500Pct = Math.min((currentLivretA / 30000) * 100, 100);
-  const indep4000Pct = Math.min((currentLivretA / 48000) * 100, 100);
+  const indep5000Pct = Math.min((currentLivretA / 60000) * 100, 100);
 
   document.getElementById('indep_2500_pct').textContent = `${indep2500Pct.toFixed(1)}%`;
   document.getElementById('indep_2500_bar').style.width = `${indep2500Pct}%`;
 
-  document.getElementById('indep_4000_pct').textContent = `${indep4000Pct.toFixed(1)}%`;
-  document.getElementById('indep_4000_bar').style.width = `${indep4000Pct}%`;
+  document.getElementById('indep_5000_pct').textContent = `${indep5000Pct.toFixed(1)}%`;
+  document.getElementById('indep_5000_bar').style.width = `${indep5000Pct}%`;
 
   const findPoETADate = (projection, target) => {
     if (!projection) return '—';
@@ -1470,14 +1482,14 @@ function validateTier() {
   if (!confirm(`Valider le palier ${st.tier} (€${st.ref.toFixed(2)} → €${st.target.toFixed(2)}) avec un retrait de €${total.toFixed(2)} ?`)) return;
 
   // Nouvelle entrée = photo des soldes actuels + le retrait validé. Le solde PO n'est pas modifié
-  // (il est saisi tel quel après le retrait réel) ; le montant réparti sort du « Dispo ».
+  // (il est saisi tel quel après le retrait réel) ; Dispo = cumul des retraits validés − flat tax.
   const last = trackingData[trackingData.length - 1];
   const now = new Date();
   const dateStr = toLocalDateStr(now);
   const timeStr = now.toTimeString().substring(0, 5);
   trackingData.push({
     date: dateStr, time: timeStr, po: last.po, vwrl_base: last.vwrl_base, vusa_base: last.vusa_base,
-    dispo: Math.max(0, Math.round(((last.dispo || 0) - total) * 100) / 100),
+    dispo: Math.round((getValidatedWithdrawals().reduce((acc, w) => acc + (w.total || 0) - (w.impots || 0), 0) + total - amounts.impots) * 100) / 100,
     entry_timestamp: Math.max(now.getTime(), (last.entry_timestamp || 0) + 1),
     withdrawal: { tier: st.tier, ref: st.ref, target: st.target, total, ...amounts, validated_at: now.toISOString() }
   });
