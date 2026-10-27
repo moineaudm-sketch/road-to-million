@@ -1199,6 +1199,7 @@ function generateRealProjection() {
     const dayOfWeek = currentDate.getDay();
     const dateStr = toLocalDateStr(currentDate);
     const isTradingDay = dayOfWeek !== 0 && dayOfWeek !== 6;
+    let tierCrossed = false; // franchissement d'un palier (retrait) dans la continuation projetée
 
     // Une saisie réelle compte même un samedi/dimanche (ex: session vérifiée le week-end) : elle met
     // à jour le solde de référence pour tous les jours, y compris le lundi suivant. Seule la
@@ -1240,6 +1241,7 @@ function generateRealProjection() {
         cumulativeDeposits += toVWRL + toVUSA; // nouvel apport en capital vers l'ETF (pas un gain de marché)
         tierRefBalance = po; // le nouveau point de référence = solde réel après retrait
         nextDoubleTarget = tierRefBalance * 2;
+        tierCrossed = true;
       }
     }
     // Avant premier suivi : garder 300€
@@ -1258,7 +1260,8 @@ function generateRealProjection() {
         total: po + vwrl + vusa,
         livretA: livretA,
         isActual: !!trackingByDate[dateStr],
-        netWithdrawn: etfTotal - taxes
+        netWithdrawn: etfTotal - taxes,
+        tierCrossed
       });
     }
 
@@ -1632,6 +1635,53 @@ function populateTierSelect() {
   sel.dataset.currentTier = String(st.tier);
 }
 
+// Saisies réelles chronologiques, sans les pics de saisie aberrants (ex : 794 tapé au lieu de 7,94)
+function getCleanTrackingEntries() {
+  return trackingData.filter((t, i) => {
+    const prev = trackingData[i - 1];
+    const next = trackingData[i + 1];
+    return !(prev && next && prev.po > 0 && next.po > 0 && t.po > prev.po * 3 && t.po > next.po * 3);
+  });
+}
+
+// Date à laquelle le suivi réel franchit la cible de chaque palier : saisies réelles pour les paliers
+// déjà atteints, puis continuation projetée (generateRealProjection) pour les suivants.
+function getRealTierCrossDates(projRealRaw) {
+  const st = getTierState();
+  const entries = getCleanTrackingEntries();
+  const validated = trackingData.filter(t => t.withdrawal);
+  const contEvents = (projRealRaw || []).filter(d => d.tierCrossed).map(d => d.date);
+  const dates = {};
+  let prev = null;
+  for (let n = 1; n < 100; n++) {
+    let date = null;
+    if (n <= st.tier) {
+      const target = n < st.tier ? validated[n - 1].withdrawal.target : st.target;
+      const hit = entries.find(t => t.po >= target && (!prev || t.date >= prev));
+      if (hit) date = hit.date;
+      else if (n < st.tier) date = validated[n - 1].date; // repli : date de validation
+    }
+    // Continuation : le k-ième retrait projeté correspond au palier (palier en cours + k)
+    if (!date && n >= st.tier) date = contEvents[n - st.tier] || null;
+    if (!date) break;
+    dates[n] = date;
+    prev = date;
+  }
+  return dates;
+}
+
+// Fenêtre d'affichage centrée sur le suivi réel : du franchissement du palier précédent jusqu'au
+// franchissement du palier choisi + 2 semaines (10 jours de trading). Indices dans les séries journalières.
+function getRealTierWindow(projRealRaw, tierNum) {
+  const last = projRealRaw.length - 1;
+  const dates = getRealTierCrossDates(projRealRaw);
+  const idxOf = d => { const i = projRealRaw.findIndex(p => p.date >= d); return i === -1 ? last : i; };
+  if (tierNum > 1 && !dates[tierNum - 1]) return { start: Math.max(0, last - 130), end: last }; // hors horizon
+  const start = tierNum > 1 ? idxOf(dates[tierNum - 1]) : 0;
+  const end = dates[tierNum] ? Math.min(idxOf(dates[tierNum]) + 10, last) : last;
+  return { start, end: Math.min(Math.max(end, start + 10), last) };
+}
+
 function calculateTiers(projection) {
   if (!projection || projection.length === 0) return [];
 
@@ -1920,16 +1970,25 @@ function updateAllCharts() {
   // Récupérer palier sélectionné
   populateTierSelect();
   const tierNum = parseInt(document.getElementById('tierSelect').value) || 1;
-  const tierRange = getTierDisplayRange(projMean, tierNum, 2); // 2 semaines après doublement (scénario moyen)
 
-  // Extraire la plage pour ce palier
-  const start = tierRange.start;
-  const end = tierRange.end;
-
-  const projPessSlice = projPess.slice(start, end + 1);
-  const projMeanSlice = projMean.slice(start, end + 1);
-  const projOptSlice = projOpt.slice(start, end + 1);
-  const projRealSlice = projReal ? projReal.slice(start, end + 1) : [];
+  // Fenêtre centrée sur le suivi réel (dates où le réel franchit les paliers), séries journalières
+  // alignées jour par jour depuis START_DATE ; 1 point par semaine si la fenêtre dépasse ~6 mois.
+  // Sans suivi réel : ancienne fenêtre basée sur le scénario moyen.
+  let projPessSlice, projMeanSlice, projOptSlice, projRealSlice;
+  if (projRealRaw && projRealRaw.length > 0) {
+    const win = getRealTierWindow(projRealRaw, tierNum);
+    const thin = arr => arr.length > 130 ? arr.filter((_, i) => i % 5 === 0 || i === arr.length - 1) : arr;
+    projPessSlice = thin(projPessRaw.slice(win.start, win.end + 1));
+    projMeanSlice = thin(projMeanRaw.slice(win.start, win.end + 1));
+    projOptSlice = thin(projOptRaw.slice(win.start, win.end + 1));
+    projRealSlice = thin(projRealRaw.slice(win.start, win.end + 1));
+  } else {
+    const tierRange = getTierDisplayRange(projMean, tierNum, 2);
+    projPessSlice = projPess.slice(tierRange.start, tierRange.end + 1);
+    projMeanSlice = projMean.slice(tierRange.start, tierRange.end + 1);
+    projOptSlice = projOpt.slice(tierRange.start, tierRange.end + 1);
+    projRealSlice = [];
+  }
 
   // Utiliser projReal pour labels si disponible, sinon projMean
   const labelsSlice = (projRealSlice.length > 0 ? projRealSlice : projMeanSlice).map(d => d.date);
@@ -1945,10 +2004,12 @@ function updateAllCharts() {
     ...projPessSlice.map(d => d.total),
     ...projMeanSlice.map(d => d.total),
     ...projOptSlice.map(d => d.total),
+    ...projRealSlice.map(d => d.po),
+    ...projRealSlice.map(d => d.total),
   ];
+  // Échelle commune : le suivi réel ET les 3 projections restent visibles
   const maxValueReal = Math.max(...allValues);
-  let maxY = Math.ceil(maxValueReal * 1.1 / 1000) * 1000; // Arrondir à 1000€ supérieur
-  if (tierNum === 1) maxY = maxY / 2; // Palier 1 : zoom supplémentaire, les montants réels y sont bien plus bas
+  const maxY = Math.ceil(maxValueReal * 1.1 / 1000) * 1000; // Arrondir à 1000€ supérieur
   const maxYETF = maxY / 4; // Diviser par 4 après arrondi
 
   // Courbe "Suivi réel" : points exacts saisis jusqu'à aujourd'hui, puis continuation en projection sur la base moyenne.
