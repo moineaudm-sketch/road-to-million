@@ -300,6 +300,8 @@
 
   <div id="motivationBox" style="background: #eef6ff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #2a78d6;"></div>
 
+  <div id="stakeBox" style="background: #f5f3ff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #7c3aed;"></div>
+
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
     <h2 style="margin-top: 0;">ETA Indépendance Financière (Dispo)</h2>
     <div class="indep-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
@@ -1558,6 +1560,110 @@ function updateMotivation() {
     </div>`;
 }
 
+// Plan de mises du trading perso : la mise de base dépend du solde PO, chaque vague reprend après
+// une vague perdue. Au-delà de 3 000 € aucun palier n'est défini : la base 3 € est conservée.
+const STAKE_TIERS = [
+  { min: 0, max: 600, base: 1, label: '< 600 €' },
+  { min: 600, max: 1200, base: 2, label: '600 – 1 200 €' },
+  { min: 1200, max: 3000, base: 3, label: '1 200 – 3 000 €' }
+];
+const STAKE_WAVES = [[1, 1], [2, 1], [4, 1], [5, 2], [5, 4], [5, 8], [5, 16]]; // [nombre de mises, multiple de la base]
+const STAKE_PAYOUT = 0.9; // rendement d'une mise gagnante
+let stakeWavesPlayed = 7; // nombre de vagues jouées dans la simulation (les n premières), choisi par boutons
+
+function setStakeWavesPlayed(n) {
+  stakeWavesPlayed = n;
+  updateStakePlan();
+}
+
+function updateStakePlan() {
+  const box = document.getElementById('stakeBox');
+  if (!box) return;
+  const cur = trackingData.length ? (trackingData[trackingData.length - 1].po || 0) : 0;
+  let tierIdx = STAKE_TIERS.findIndex(t => cur >= t.min && cur < t.max);
+  const beyond = tierIdx === -1;
+  if (beyond) tierIdx = STAKE_TIERS.length - 1;
+  const tier = STAKE_TIERS[tierIdx];
+  const eur = v => `€${v.toFixed(2)}`;
+
+  let cumul = 0;
+  const rows = STAKE_WAVES.map(([n, mult], i) => {
+    const stake = mult * tier.base;
+    const wave = n * stake;
+    const lostBefore = cumul;
+    cumul += wave;
+    const gain = wave * STAKE_PAYOUT - lostBefore;
+    const color = gain > 0 ? '#15803d' : gain < 0 ? '#dc2626' : '#666';
+    const pct = cur > 0 ? `${(cumul / cur * 100).toFixed(1)}%` : '—';
+    return `<tr>
+        <td>Vague ${i + 1}</td>
+        <td>${n} × ${eur(stake)}</td>
+        <td>${eur(wave)}</td>
+        <td>${eur(cumul)}</td>
+        <td>${pct}</td>
+        <td style="color: ${color}; font-weight: 600;">${gain >= 0 ? '+' : '−'}${eur(Math.abs(gain))}</td>
+      </tr>`;
+  }).join('');
+
+  // Simulation : les n premières vagues sont jouées et k d'entre elles sont gagnées. Gain = 90 % des vagues
+  // gagnées − vagues perdues. Pire cas = les k plus petites vagues gagnées, meilleur cas = les k plus grosses.
+  const played = Math.min(Math.max(stakeWavesPlayed, 1), STAKE_WAVES.length);
+  const waveTotals = STAKE_WAVES.slice(0, played).map(([n, mult], i) => ({ num: i + 1, amount: n * mult * tier.base }));
+  const total = waveTotals.reduce((acc, w) => acc + w.amount, 0);
+  const asc = [...waveTotals].sort((a, b) => a.amount - b.amount);
+  const fmtWaves = list => {
+    const nums = list.map(w => w.num).sort((a, b) => a - b);
+    const parts = [];
+    for (let i = 0; i < nums.length; i++) {
+      let j = i;
+      while (j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+      parts.push(i === j ? `V${nums[i]}` : `V${nums[i]}–V${nums[j]}`);
+      i = j;
+    }
+    return parts.join(', ');
+  };
+  const signed = v => `<span style="color: ${v > 0 ? '#15803d' : v < 0 ? '#dc2626' : '#666'}; font-weight: 600;">${v >= 0 ? '+' : '−'}${eur(Math.abs(v))}</span>`;
+  const simRows = waveTotals.map((_, idx) => {
+    const k = idx + 1;
+    const worst = asc.slice(0, k);
+    const best = asc.slice(asc.length - k);
+    const gainOf = won => won.reduce((acc, w) => acc + w.amount, 0) * (1 + STAKE_PAYOUT) - total;
+    return `<tr>
+        <td>${k} / ${played}</td>
+        <td>${signed(gainOf(worst))} <span style="color: #888; font-size: 11px;">(${fmtWaves(worst)})</span></td>
+        <td>${signed(gainOf(best))} <span style="color: #888; font-size: 11px;">(${fmtWaves(best)})</span></td>
+      </tr>`;
+  }).join('');
+
+  const chips = STAKE_TIERS.map((t, i) => {
+    const active = i === tierIdx;
+    return `<span style="display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; margin: 0 6px 6px 0; ${active ? 'background: #7c3aed; color: #fff; font-weight: 600;' : 'background: #ede9fe; color: #5b21b6;'}">${t.label} : base ${t.base} €</span>`;
+  }).join('');
+
+  box.innerHTML = `
+    <h2 style="margin-top: 0;">Plan de mises — trading perso</h2>
+    <div style="font-size: 12px; color: #555; margin-bottom: 0.5rem;">Solde PO : ${eur(cur)} · mise de base : <strong>${tier.base} €</strong>${beyond ? ' (aucun palier défini au-delà de 3 000 € : base 3 € conservée)' : ''}</div>
+    <div style="margin-bottom: 0.75rem;">${chips}</div>
+    <div style="overflow-x: auto;">
+      <table class="tracking-table">
+        <thead><tr><th>Vague</th><th>Mises</th><th>Engagé vague</th><th>Engagé cumulé</th><th>% du solde</th><th>Gain net si victoire</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size: 12px; color: #555; margin-top: 0.75rem;">Gain net si victoire = 90 % des mises de la vague gagnée − mises perdues aux vagues précédentes. Risque max (7 vagues perdues) : <strong>${eur(cumul)}</strong>${cur > 0 ? ` (${(cumul / cur * 100).toFixed(1)}% du solde)` : ''}.</div>
+    <h3 style="margin: 1.25rem 0 0.5rem; font-size: 14px;">Simulation : k vagues gagnées sur ${played} jouée${played > 1 ? 's' : ''} (${played === 1 ? 'V1' : `V1–V${played}`})</h3>
+    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; margin-bottom: 0.5rem;">Vagues jouées :
+      ${STAKE_WAVES.map((_, i) => `<button onclick="setStakeWavesPlayed(${i + 1})" style="padding: 4px 10px; font-size: 12px; ${i + 1 === played ? 'background: #7c3aed;' : 'background: #ede9fe; color: #5b21b6;'}">${i + 1}</button>`).join('')}
+    </div>
+    <div style="overflow-x: auto;">
+      <table class="tracking-table">
+        <thead><tr><th>Vagues gagnées</th><th>Pire cas (plus petites vagues gagnées)</th><th>Meilleur cas (plus grosses vagues gagnées)</th></tr></thead>
+        <tbody>${simRows}</tbody>
+      </table>
+    </div>
+    <div style="font-size: 12px; color: #555; margin-top: 0.75rem;">Total engagé sur ${played === 1 ? 'la vague jouée' : `les ${played} vagues jouées`} : ${eur(total)}. Gain = 90 % des mises des vagues gagnées − mises des vagues perdues.</div>`;
+}
+
 function updateNextTier() {
   if (trackingData.length === 0) {
     document.getElementById('nextTierLabel').textContent = '—';
@@ -2144,6 +2250,7 @@ function updateAllCharts() {
   updateETA();
   updateNextTier();
   updateMotivation();
+  updateStakePlan();
 }
 
 function editEntryDate(entryTimestamp) {
