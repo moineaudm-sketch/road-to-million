@@ -298,6 +298,8 @@
     <div id="tierValidation"></div>
   </div>
 
+  <div id="motivationBox" style="background: #eef6ff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #2a78d6;"></div>
+
   <div style="background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
     <h2 style="margin-top: 0;">ETA Indépendance Financière (Dispo)</h2>
     <div class="indep-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
@@ -1487,6 +1489,75 @@ function validateTier() {
   updateAllCharts();
 }
 
+// Objectifs motivationnels PocketOption : bornes de paliers (début/fin) et objectif robot, au-dessus du
+// solde actuel, hors prochain palier (affiché à part). Les 3 plus proches sont retenus.
+function getMotivationTargets(st, cur) {
+  const cands = [];
+  const validated = getValidatedWithdrawals();
+  validated.forEach((w, i) => {
+    const start = i === 0 ? TIER_BASE : validated[i - 1].target - validated[i - 1].total;
+    cands.push({ label: `Début palier ${i + 1}`, value: start });
+    cands.push({ label: `Fin palier ${i + 1}`, value: w.target });
+  });
+  let ref = st.ref;
+  for (let n = st.tier; n < st.tier + 12; n++) {
+    cands.push({ label: `Début palier ${n}`, value: ref });
+    cands.push({ label: `Fin palier ${n}`, value: ref * 2 });
+    ref *= 1.5;
+  }
+  cands.push({ label: 'Objectif robot trading', value: 1000 });
+  const seen = new Set();
+  return cands
+    .map(c => ({ ...c, value: Math.round(c.value * 100) / 100 }))
+    .filter(c => c.value > cur && Math.abs(c.value - st.target) > 0.5 && !seen.has(c.value) && seen.add(c.value))
+    .sort((a, b) => a.value - b.value)
+    .slice(0, 3);
+}
+
+// Date du premier passage du solde PO au-dessus de la cible, à partir d'aujourd'hui
+function findPoEtaFrom(proj, value, today) {
+  const hit = proj.find(d => d.date > today && d.po >= value);
+  return hit ? hit.date : '—';
+}
+
+function updateMotivation() {
+  const box = document.getElementById('motivationBox');
+  if (!box) return;
+  if (trackingData.length === 0) { box.innerHTML = ''; return; }
+  const cur = trackingData[trackingData.length - 1].po || 0;
+  const st = getTierState();
+  const targets = getMotivationTargets(st, cur);
+  if (targets.length === 0) { box.innerHTML = ''; return; }
+  const today = toLocalDateStr(new Date());
+  const pess = generateProjection(2000, 0.008, 0.025, 0.05);
+  const mean = generateProjection(2000, 0.010, 0.055, 0.09);
+  const opt = generateProjection(2000, 0.012, 0.09, 0.135);
+  const real = generateRealProjection() || [];
+  const horizons = ['Court terme', 'Moyen terme', 'Long terme'];
+  const cards = targets.map((t, i) => {
+    const pct = Math.min(Math.max(cur / t.value * 100, 0), 100);
+    const eta = proj => (cur >= t.value ? 'Atteint ✓' : findPoEtaFrom(proj, t.value, today));
+    return `
+      <div style="background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #cfe2fa;">
+        <div style="font-size: 11px; color: #2a78d6; font-weight: 600; text-transform: uppercase;">${horizons[i] || ''}</div>
+        <div style="font-weight: 600; margin: 2px 0 6px;">${t.label} : €${t.value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div style="font-size: 12px; color: #555; margin-bottom: 6px;">Reste : €${Math.max(0, t.value - cur).toFixed(2)} · ${pct.toFixed(1)}%</div>
+        <div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; margin-bottom: 8px;"><div style="height: 100%; width: ${pct}%; background: #2a78d6;"></div></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; font-size: 12px;">
+          <div>Pess : <strong>${eta(pess)}</strong></div>
+          <div>Moyen : <strong>${eta(mean)}</strong></div>
+          <div>Opt : <strong>${eta(opt)}</strong></div>
+          <div>Réel : <strong>${cur >= t.value ? 'Atteint ✓' : (real.length ? findPoEtaFrom(real, t.value, today) : '—')}</strong></div>
+        </div>
+      </div>`;
+  }).join('');
+  box.innerHTML = `
+    <h2 style="margin-top: 0;">Objectifs motivation PocketOption</h2>
+    <div style="font-size: 12px; color: #555; margin-bottom: 0.75rem;">Solde actuel : €${cur.toFixed(2)} · Prochain palier : €${st.target.toFixed(2)}</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">${cards}
+    </div>`;
+}
+
 function updateNextTier() {
   if (trackingData.length === 0) {
     document.getElementById('nextTierLabel').textContent = '—';
@@ -2072,6 +2143,7 @@ function updateAllCharts() {
 
   updateETA();
   updateNextTier();
+  updateMotivation();
 }
 
 function editEntryDate(entryTimestamp) {
