@@ -1522,5 +1522,14 @@
     "vusa_base": 0.0001,
     "dispo": 640.46,
     "entry_timestamp": 1793604360000
+  },
+  {
+    "date": "2026-11-02",
+    "time": "09:06",
+    "po": 45.33,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1793606760000
   }
 ]
