@@ -1588,6 +1588,33 @@
   },
   {
     "date": "2026-11-03",
+    "time": "17:21",
+    "po": 22.27,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1793722860000
+  },
+  {
+    "date": "2026-11-03",
+    "time": "20:15",
+    "po": 20.75,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1793733300000
+  },
+  {
+    "date": "2026-11-03",
+    "time": "20:59",
+    "po": 22.07,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1793735940000
+  },
+  {
+    "date": "2026-11-03",
     "time": "22:30",
     "po": 22.07,
     "vwrl_base": 0.0001,
@@ -1765,5 +1792,14 @@
     "vusa_base": 0.0001,
     "dispo": 640.46,
     "entry_timestamp": 1793807280000
+  },
+  {
+    "date": "2026-11-04",
+    "time": "20:52",
+    "po": 48.3,
+    "vwrl_base": 0.0001,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1793821920000
   }
 ]
