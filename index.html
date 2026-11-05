@@ -31,7 +31,14 @@
     .tracking-table tbody tr:hover { background: #f9f9f9; }
     .no-data { padding: 1rem; color: #999; font-size: 12px; text-align: center; }
     .controls { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
-    .toast { position: fixed; bottom: 20px; right: 20px; background: #1baf7a; color: white; padding: 12px 16px; border-radius: 4px; font-size: 13px; z-index: 1000; animation: slideIn 0.3s ease; }
+    /* Formulaire de saisie fixé en bas de l'écran ; le reste de la page défile au-dessus */
+    .entry-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0; background: #fff; border-top: 1px solid #ddd; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
+    .entry-dock-bar { display: flex; gap: 8px; align-items: center; }
+    .entry-dock-bar label { font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .entry-dock-bar input { flex: 1; min-width: 0; width: auto; }
+    .entry-dock-more { max-height: 55vh; overflow-y: auto; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid #eee; }
+    .entry-dock-more h2 { margin-top: 0; }
+    .toast { position: fixed; bottom: var(--dock-height, 20px); right: 20px; background: #1baf7a; color: white; padding: 12px 16px; border-radius: 4px; font-size: 13px; z-index: 1000; animation: slideIn 0.3s ease; }
     @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
     .soldes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; background: #f0f0f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; }
@@ -351,7 +358,14 @@
     <table class="tracking-table"><thead><tr id="tableHead"><th>Date & Heure</th></tr></thead><tbody id="trackingTable"><tr><td colspan="7" class="no-data">Aucune donnée.</td></tr></tbody></table>
   </div>
 
-  <div class="section">
+  <div class="section entry-dock" id="entryDock">
+    <div class="entry-dock-bar">
+      <label for="poInput">Solde PO :</label>
+      <input type="number" id="poInput" placeholder="€" step="0.01">
+      <button onclick="addTracking()">Ajouter</button>
+      <button class="secondary" id="entryDockToggle" onclick="toggleEntryDock()">▲ Plus</button>
+    </div>
+    <div class="entry-dock-more" id="entryDockMore" hidden>
     <h2>Saisie quotidienne</h2>
     <details style="margin-bottom: 1rem;">
       <summary style="cursor: pointer; font-size: 12px; color: #666;">Prix unitaires (optionnel)</summary>
@@ -379,12 +393,10 @@
       <button class="secondary" onclick="resetEntryDateTime()" style="padding: 8px 10px; font-size: 12px;">Maintenant</button>
     </div>
     <div style="font-size: 11px; color: #999; margin-bottom: 0.75rem;">Session du soir/nuit saisie le lendemain ? Change la date avant d'ajouter.</div>
-    <div class="form-row"><label style="min-width: 80px;">PO Balance :</label><input type="number" id="poInput" placeholder="€" step="0.01"></div>
     <div class="form-row"><label style="min-width: 80px;">VWCE :</label><input type="number" id="vwrlInput" placeholder="€ ou unités" step="0.01"><select id="vwrlType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
     <div class="form-row"><label style="min-width: 80px;">VUSD :</label><input type="number" id="vusaInput" placeholder="€ ou unités" step="0.01"><select id="vusaType" style="width: auto;"><option value="eur">€</option><option value="units">Unités</option></select></div>
     <div class="form-row"><label style="min-width: 80px;">Dispo :</label><input type="number" id="dispoInput" placeholder="€" step="0.01"></div>
     <div class="controls">
-      <button onclick="addTracking()">Ajouter</button>
       <button class="secondary" onclick="deleteLastEntry()">Annuler dernière</button>
       <button class="secondary" onclick="exportData()">📥 Export</button>
       <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData()">
@@ -392,6 +404,7 @@
       <button class="secondary" onclick="exportTrackingJson()">🔄 Export tracking.json</button>
       <button class="secondary" onclick="loadData()">🔁 Resync GitHub</button>
       <button class="secondary" onclick="clearLocalCache()">🗑️ Vider cache local</button>
+    </div>
     </div>
   </div>
 </div>
@@ -646,6 +659,31 @@ function clearLocalCache() {
   try { localStorage.removeItem('po_dashboard_v2'); } catch (e) { /* ignore */ }
   location.reload();
 }
+// Bandeau de saisie : ouvrir/fermer le détail, et réserver sous la page la hauteur du bandeau
+function toggleEntryDock() {
+  const more = document.getElementById('entryDockMore');
+  more.hidden = !more.hidden;
+  document.getElementById('entryDockToggle').textContent = more.hidden ? '▲ Plus' : '▼ Moins';
+  syncEntryDockSpace();
+}
+
+function syncEntryDockSpace() {
+  const dock = document.getElementById('entryDock');
+  if (!dock) return;
+  const h = dock.offsetHeight;
+  document.body.style.paddingBottom = `${h + 16}px`;
+  document.documentElement.style.setProperty('--dock-height', `${h + 12}px`);
+}
+
+window.addEventListener('resize', syncEntryDockSpace);
+if (window.ResizeObserver) {
+  window.addEventListener('DOMContentLoaded', () => {
+    const dock = document.getElementById('entryDock');
+    if (dock) new ResizeObserver(syncEntryDockSpace).observe(dock);
+  });
+}
+window.addEventListener('load', syncEntryDockSpace);
+
 function showToast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2500); }
 function applyAppreciation(value, rate, days) { return value * Math.pow(1 + rate, days / 365); }
 // toISOString() convertit en UTC : en Europe/Paris (UTC+2 l'été), ça décale toute date locale d'un jour
