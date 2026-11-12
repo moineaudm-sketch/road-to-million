@@ -1909,5 +1909,32 @@
     "vusa_base": 0.0001,
     "dispo": 640.46,
     "entry_timestamp": 1794150180000
+  },
+  {
+    "date": "2026-11-09",
+    "time": "16:07",
+    "po": 32.36,
+    "vwrl_base": 28.08,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1794236820000
+  },
+  {
+    "date": "2026-11-09",
+    "time": "16:08",
+    "po": 32.36,
+    "vwrl_base": 0.01,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1794236880000
+  },
+  {
+    "date": "2026-11-12",
+    "time": "11:26",
+    "po": 40,
+    "vwrl_base": 0.01,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1794479160000
   }
 ]
