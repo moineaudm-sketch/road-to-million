@@ -1958,10 +1958,19 @@
   {
     "date": "2026-11-12",
     "time": "13:20",
-    "po": 55,
-    "vwrl_base": 58.39,
+    "po": 58.39,
+    "vwrl_base": 0.01,
     "vusa_base": 0.0001,
     "dispo": 640.46,
     "entry_timestamp": 1794486000000
+  },
+  {
+    "date": "2026-11-12",
+    "time": "14:10",
+    "po": 61.15,
+    "vwrl_base": 0.01,
+    "vusa_base": 0.0001,
+    "dispo": 640.46,
+    "entry_timestamp": 1794489000000
   }
 ]
